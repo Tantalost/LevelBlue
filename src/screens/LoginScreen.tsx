@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -50,134 +52,158 @@ export function LoginScreen({ onLogin }: Props) {
 
   return (
     <View style={{ flex: 1 }}>
+      <Image
+        source={require('../assets/background.png')}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      />
+      <View style={styles.darkOverlay} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.wrapper}>
 
-        <View style={styles.card}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.card}>
 
-          {/* ── header ── */}
-          <View style={styles.header}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeIcon}>🛡</Text>
+            {/* ── module ribbon (full width strip) ── */}
+            <View style={styles.ribbon}>
+              <Text style={styles.ribbonText}>⚔  Module 1 — The Basics  ⚔</Text>
             </View>
-            <Text style={styles.logo}>LevelBlue</Text>
-            <Text style={styles.tagline}>Defend the city · Spot the scam</Text>
-          </View>
 
-          {/* ── module ribbon ── */}
-          <View style={styles.ribbon}>
-            <Text style={styles.ribbonText}>⚔  Module 1 — The Basics  ⚔</Text>
-          </View>
+            <View style={styles.row}>
 
-          {/* ── body ── */}
-          <View style={styles.body}>
-
-            {/* demo credentials box */}
-            <View style={styles.demoBox}>
-              <View style={styles.demoAccent} />
-              <Text style={styles.demoTitle}>Student Account</Text>
-              <View style={styles.demoRow}>
-                <Text style={styles.demoKey}>Email</Text>
-                <Text style={styles.demoVal}>{DEMO_STUDENT.email}</Text>
+              {/* ── left: branding ── */}
+              <View style={styles.header}>
+                <Image
+                  source={require('../assets/logo.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.tagline}>Defend the city{'\n'}Spot the scam</Text>
               </View>
-              <View style={styles.demoRow}>
-                <Text style={styles.demoKey}>Pass</Text>
-                <Text style={styles.demoVal}>{DEMO_STUDENT.password}</Text>
+
+              {/* ── right: form ── */}
+              <View style={styles.body}>
+
+                {/* demo credentials box */}
+                <View style={styles.demoBox}>
+                  <View style={styles.demoAccent} />
+                  <Text style={styles.demoTitle}>Student Account</Text>
+                  <View style={styles.demoRow}>
+                    <Text style={styles.demoKey}>Email</Text>
+                    <Text style={styles.demoVal}>{DEMO_STUDENT.email}</Text>
+                  </View>
+                  <View style={styles.demoRow}>
+                    <Text style={styles.demoKey}>Pass</Text>
+                    <Text style={styles.demoVal}>{DEMO_STUDENT.password}</Text>
+                  </View>
+                </View>
+
+                {/* email + password side by side to save vertical space */}
+                <View style={styles.fieldRow}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Email</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      onChangeText={setEmail}
+                      style={styles.input}
+                      value={email}
+                    />
+                  </View>
+
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Password</Text>
+                    <TextInput
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      style={styles.input}
+                      value={password}
+                    />
+                  </View>
+                </View>
+
+                {/* error */}
+                {error ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>⚠  {error}</Text>
+                  </View>
+                ) : null}
+
+                {/* login button */}
+                <LevelBlueButton label="▶  Log In" onPress={submit} />
+
               </View>
             </View>
-
-            <View style={styles.divider} />
-
-            {/* email field */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                style={styles.input}
-                value={email}
-              />
-            </View>
-
-            {/* password field */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                onChangeText={setPassword}
-                secureTextEntry
-                style={styles.input}
-                value={password}
-              />
-            </View>
-
-            {/* error */}
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠  {error}</Text>
-              </View>
-            ) : null}
-
-            {/* login button */}
-            <LevelBlueButton label="▶  Log In" onPress={submit} />
-
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       {/* ── MFA Modal ── */}
       <Modal visible={mfaVisible} transparent animationType="fade">
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
-          {/* We reuse the styling of your main card for consistency */}
-          <View style={styles.card}>
-            
-            <View style={styles.header}>
-              <Text style={[styles.logo, { fontSize: 30 }]}>Security Uplink</Text>
-              <Text style={styles.tagline}>Identity Verification Required</Text>
-            </View>
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.mfaCard}>
 
-            <View style={styles.body}>
-              <View style={styles.field}>
-                <Text style={[styles.label, { textAlign: 'center', marginBottom: 6 }]}>
-                  Enter 6-Digit Auth Code
-                </Text>
-                <TextInput
-                  style={styles.mfaInput}
-                  value={mfaCode}
-                  onChangeText={setMfaCode}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  placeholder="000000"
-                  placeholderTextColor="#7ab8d4"
-                  autoFocus // Automatically pop the keyboard
-                />
+              <View style={styles.mfaHeader}>
+                <Text style={[styles.logo, { fontSize: 22, lineHeight: 26 }]}>Security Uplink</Text>
+                <Text style={styles.tagline}>Identity Verification Required</Text>
               </View>
 
-              {mfaError ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>⚠  {mfaError}</Text>
+              <View style={styles.mfaBody}>
+                <View style={styles.field}>
+                  <Text style={[styles.label, { textAlign: 'center', marginBottom: 6 }]}>
+                    Enter 6-Digit Auth Code
+                  </Text>
+                  <TextInput
+                    style={styles.mfaInput}
+                    value={mfaCode}
+                    onChangeText={setMfaCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholder="000000"
+                    placeholderTextColor="#7ab8d4"
+                    autoFocus // Automatically pop the keyboard
+                  />
                 </View>
-              ) : null}
 
-              <LevelBlueButton label="▶  Verify" onPress={verifyMfa} />
-              
-              <TouchableOpacity 
-                style={styles.cancelBtn} 
-                onPress={() => {
-                  setMfaVisible(false);
-                  setMfaCode(''); // Reset code on cancel
-                  setMfaError('');
-                }}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
+                {mfaError ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>⚠  {mfaError}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.mfaActions}>
+                  <View style={{ flex: 1 }}>
+                    <LevelBlueButton label="▶  Verify" onPress={verifyMfa} />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      setMfaVisible(false);
+                      setMfaCode(''); // Reset code on cancel
+                      setMfaError('');
+                    }}
+                  >
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
             </View>
-
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -187,15 +213,21 @@ export function LoginScreen({ onLogin }: Props) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
+  },
+  darkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 8, 20, 0.72)',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    backgroundColor: '#060e18',
     padding: 18,
   },
 
   // ── outer card ──
   card: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 720,
     alignSelf: 'center',
     backgroundColor: '#12243a',
     borderRadius: 6,
@@ -209,60 +241,51 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // ── header block ──
-  header: {
-    backgroundColor: '#0d1c30',
-    borderBottomWidth: 3,
-    borderBottomColor: '#0a1520',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    gap: 6,
+  // ── row split: header | body ──
+  row: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
-  badge: {
-    width: 56,
-    height: 56,
-    backgroundColor: '#F2B94B',
-    borderRadius: 4,
-    borderWidth: 3,
-    borderColor: '#0a1520',
+
+  // ── header block (left column) ──
+  header: {
+    width: 180,
+    backgroundColor: 'rgba(13, 28, 48, 0.9)',
+    borderRightWidth: 3,
+    borderRightColor: '#0a1520',
+    paddingVertical: 18,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-    shadowColor: '#0a1520',
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    gap: 10,
   },
-  badgeIcon: {
-    fontSize: 28,
-    lineHeight: 34,
+  logoImage: {
+    width: '100%',
+    height: 76,
+    marginBottom: 2,
   },
   logo: {
     fontFamily: 'PixelFont',
-    fontSize: 38,
+    fontSize: 26,
     color: '#F2B94B',
     textAlign: 'center',
     textShadowColor: '#0a1520',
-    textShadowOffset: { width: 3, height: 3 },
+    textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 0,
-    lineHeight: 44,
+    lineHeight: 30,
   },
   tagline: {
     color: '#7ab8d4',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
 
   // ── module ribbon ──
   ribbon: {
     backgroundColor: '#c0392b',
-    borderTopWidth: 2,
-    borderTopColor: '#e74c3c',
     borderBottomWidth: 2,
     borderBottomColor: '#0a1520',
     paddingVertical: 5,
@@ -276,9 +299,15 @@ const styles = StyleSheet.create({
     letterSpacing: 2.5,
   },
 
-  // ── body ──
+  // ── body (right column) ──
   body: {
-    padding: 16,
+    flex: 1,
+    padding: 18,
+    gap: 14,
+  },
+
+  fieldRow: {
+    flexDirection: 'row',
     gap: 12,
   },
 
@@ -311,36 +340,27 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 2,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   demoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 2,
+    marginTop: 1,
   },
   demoKey: {
     color: '#5a8aaa',
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    width: 36,
+    letterSpacing: 0.5,
+    width: 50,
   },
   demoVal: {
     color: '#e8e2d4',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: '#0a1520',
-    shadowColor: '#1e3a55',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
   },
 
   field: {
@@ -355,14 +375,14 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
   input: {
-    height: 46,
+    height: 44,
     borderRadius: 4,
     borderWidth: 2,
     borderColor: '#0a1520',
     backgroundColor: '#F4F1E9',
     color: '#1B2430',
-    paddingHorizontal: 14,
-    fontSize: 15,
+    paddingHorizontal: 12,
+    fontSize: 14,
     fontWeight: '700',
     shadowColor: '#0a1520',
     shadowOffset: { width: 2, height: 2 },
@@ -376,7 +396,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#c0392b',
     borderRadius: 4,
-    paddingVertical: 7,
+    paddingVertical: 6,
     paddingHorizontal: 12,
   },
   errorText: {
@@ -389,31 +409,66 @@ const styles = StyleSheet.create({
   // === MFA MODAL STYLES ===
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(6, 14, 24, 0.9)',
+  },
+  modalScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(6, 14, 24, 0.9)', // Deep dark overlay
     padding: 18,
   },
+  mfaCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    backgroundColor: '#12243a',
+    borderRadius: 6,
+    borderWidth: 3,
+    borderColor: '#0a1520',
+    shadowColor: '#2e5a8a',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  mfaHeader: {
+    backgroundColor: '#0d1c30',
+    borderBottomWidth: 3,
+    borderBottomColor: '#0a1520',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 4,
+  },
+  mfaBody: {
+    padding: 14,
+    gap: 10,
+  },
   mfaInput: {
-    height: 70,
+    height: 52,
     borderRadius: 4,
     borderWidth: 2,
     borderColor: '#0a1520',
     backgroundColor: '#F4F1E9',
     color: '#1B2430',
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '900',
     textAlign: 'center',
-    letterSpacing: 12, // Space out the 6 digits nicely
+    letterSpacing: 10,
     shadowColor: '#0a1520',
     shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
   },
-  cancelBtn: {
-    marginTop: 8,
+  mfaActions: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  cancelBtn: {
     paddingVertical: 10,
+    paddingHorizontal: 4,
   },
   cancelText: {
     color: '#7ab8d4',

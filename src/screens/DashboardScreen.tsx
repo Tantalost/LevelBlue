@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const BASE_WIDTH = 932; // the width the mockup was authored on
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }: any) {
   // useWindowDimensions is reactive (re-renders on resize/rotation), unlike
   // a one-time Dimensions.get('window') captured at module load. Styles are
   // rebuilt only when width actually changes.
@@ -101,12 +101,12 @@ export default function DashboardScreen() {
               <TouchableOpacity style={styles.navButton}>
                 <Text style={styles.navButtonText}>Intel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.navButton}>
+              <TouchableOpacity style={styles.navButton}  onPress={() => navigation.navigate('Progress')}>
                 <Text style={styles.navButtonText}>Progress</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.deployButtonOuter} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.deployButtonOuter} activeOpacity={0.85}  onPress={() => navigation.navigate('MissionBriefing')}>
               <LinearGradient
                 colors={['#ffe28a', '#ffa634', '#d94d10']}
                 start={{ x: 0, y: 0 }}

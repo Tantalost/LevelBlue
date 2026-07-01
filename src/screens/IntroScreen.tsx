@@ -351,23 +351,14 @@ const styles = StyleSheet.create({
 
   // ── Logo ──
   logoWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -300, // pull logo upward from center
-    flex: 1,
-    width: '100%',
-  },
-  pulseRing: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    borderWidth: 1.5,
-    borderColor: CYAN,
+  alignItems: 'center',
+  justifyContent: 'center',
+  flex: 1,
+  width: '100%',
   },
   logo: {
-    width: '85%',
-    height: 460,
+    width: '70%',
+    height: '200%', 
   },
 
   // ── Tagline ──
@@ -431,7 +422,7 @@ const styles = StyleSheet.create({
   },
   bottomStripText: {
     color: 'rgba(168,85,247,0.65)',
-    fontSize: 8,
+    fontSize: 7,
     letterSpacing: 1.5,
     fontFamily: 'PressStart2P',
   },
@@ -446,12 +437,12 @@ const styles = StyleSheet.create({
   },
   cursor: {
     color: PURPLE,
-    fontSize: 8,
+    fontSize: 7,
     marginLeft: 2,
   },
    taglineText: {
     color: 'rgba(0,212,255,0.6)',
-    fontSize: 8,
+    fontSize: 7,
     textAlign: 'center',
     fontFamily: 'PixelFont',
   },
@@ -461,9 +452,9 @@ const styles = StyleSheet.create({
     fontFamily: 'PixelFont',
   },
   pressAnyText: {
-    marginTop: 100,
+    marginTop: 24,
     color: 'rgba(0,212,255,0.35)',
-    fontSize: 8,
+    fontSize: 7,
     fontFamily: 'PixelFont',
   },
 });
