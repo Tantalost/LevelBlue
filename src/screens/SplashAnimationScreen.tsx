@@ -1,39 +1,122 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  StatusBar,
+  Easing,
+  ImageBackground,
+  Image,
+  Dimensions,
+  PixelRatio,
+} from 'react-native';
+
+const STUDIO_HOLD_MS = 1400;
+const LOADING_DURATION_MS = 22000;
+
+// Drop your loading screen art here (e.g. require('../assets/loading-art.png'))
+const LOADING_ART = require('../assets/loading.png');
+const LOGO_IMAGE = require('../assets/logo.png');
+
+const { width, height } = Dimensions.get('window');
+const BASE_WIDTH = 932;
+const scaleFactor = width / BASE_WIDTH;
+const normalize = (size: number) => Math.round(PixelRatio.roundToNearestPixel(size * scaleFactor));
+const bw = (size: number) => Math.max(1, normalize(size));
 
 export default function SplashAnimationScreen({ navigation }: any) {
-  // Initial opacity is 0
-  const fadeAnim = useRef(new Animated.Value(0)).current; 
+  const [phase, setPhase] = useState<'studio' | 'loading'>('studio');
 
+  const studioFade = useRef(new Animated.Value(0)).current;
+  const gameFade = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+
+  // Phase 1: Studio card (fade in -> hold -> fade out)
   useEffect(() => {
-    // Chain animations in a sequence
     Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 1, // Fade to full opacity
-        duration: 2000, // 2 seconds
+      Animated.timing(studioFade, {
+        toValue: 1,
+        duration: 700,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      Animated.delay(2000), // Hold it visible for 2 seconds
-      Animated.timing(fadeAnim, {
-        toValue: 0, // Fade out
-        duration: 1500, // 1.5 seconds
+      Animated.delay(STUDIO_HOLD_MS),
+      Animated.timing(studioFade, {
+        toValue: 0,
+        duration: 500,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
-      })
-    ]).start(() => {
-      // Once the entire animation sequence finishes, navigate to the IntroScreen
-      navigation.replace('Intro'); 
+      }),
+    ]).start(() => setPhase('loading'));
+  }, [studioFade]);
+
+  // Phase 2: Art fades in, bottom bar fills
+  useEffect(() => {
+    if (phase !== 'loading') return;
+
+    Animated.timing(gameFade, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: LOADING_DURATION_MS,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false, // width interpolation can't use native driver
+    }).start(() => {
+      navigation.replace('Intro');
     });
-  }, [fadeAnim, navigation]);
+  }, [phase, gameFade, progress, navigation]);
+
+  const barWidth = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <View style={styles.container}>
-      {/* Ensure status bar is hidden during the cinematic intro */}
       <StatusBar hidden />
-      
-      <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
-        <Text style={styles.studioText}>YOUR STUDIO NAME</Text>
-        <Text style={styles.presentsText}>PRESENTS</Text>
-      </Animated.View>
+
+      {phase === 'studio' ? (
+        <Animated.View style={{ opacity: studioFade, alignItems: 'center' }}>
+          <Text style={styles.studioText}>YOUR STUDIO NAME</Text>
+          <Text style={styles.presentsText}>PRESENTS</Text>
+        </Animated.View>
+      ) : (
+        <Animated.View style={[styles.loadingScreen, { opacity: gameFade }]}>
+          {/* Full-bleed loading art */}
+          <ImageBackground
+            source={LOADING_ART}
+            style={styles.artBackground}
+            resizeMode="cover"
+          >
+            {/* Optional logo overlay near top/center, CoC-style */}
+            <View style={styles.logoWrap}>
+              <Image
+                source={LOGO_IMAGE}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* Bottom-anchored progress bar (Clash-like) */}
+            <View style={styles.bottomBarWrap}>
+              <View style={styles.loadingGroup}>
+                <View style={styles.loadingTitleWrap} pointerEvents="none">
+                  <Text style={styles.loadingTitle}>Loading</Text>
+                </View>
+                <View style={styles.barTrack}>
+                  <Animated.View style={[styles.barFill, { width: barWidth }]} />
+                </View>
+                <Text style={styles.loadingTip}>Tip: Keep your defenses upgraded!</Text>
+              </View>
+            </View>
+          </ImageBackground>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -41,7 +124,7 @@ export default function SplashAnimationScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000', // Pitch black cinematic background
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -51,12 +134,80 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     marginBottom: 10,
     fontWeight: 'bold',
-    // fontFamily: 'PressStart2P', // Uncomment when pixel font is added
   },
   presentsText: {
     color: '#a0a0a0',
     fontSize: 14,
     letterSpacing: 6,
-    // fontFamily: 'PressStart2P', // Uncomment when pixel font is added
-  }
+  },
+  loadingScreen: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  artBackground: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  logoWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: '70%',
+    maxWidth: 420,
+    aspectRatio: 220 / 90,
+  },
+  bottomBarWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 40,
+    alignItems: 'center',
+  },
+  barTrack: {
+    width: normalize(420),
+    height: normalize(14),
+    borderRadius: normalize(12),
+    backgroundColor: '#2d2f33',
+    borderWidth: bw(1),
+    borderColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    backgroundColor: '#ffd166',
+    borderRadius: normalize(12),
+  },
+  loadingGroup: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  loadingTitleWrap: {
+    marginBottom: normalize(8),
+  },
+  loadingTitle: {
+    color: '#ffffff',
+    fontSize: normalize(16),
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  loadingTip: {
+    color: '#d1d5db',
+    fontSize: normalize(10),
+    marginTop: normalize(8),
+    textAlign: 'center',
+  },
+  loadingLabel: {
+    color: '#e5e7eb',
+    fontSize: 10,
+    letterSpacing: 2,
+    marginTop: 10,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
 });

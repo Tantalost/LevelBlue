@@ -128,10 +128,33 @@ export default function ProgressScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         
         {/* === HEADER === */}
+        <View style={styles.topBarContainer}>
+          <View style={styles.leftHeader}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.backButtonText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>PROGRESS</Text>
+          </View>
+
+          <View style={styles.topRightSection}>
+            <View style={styles.resourceItem}>
+              <Text style={styles.resourceIcon}>💀</Text>
+              <Text style={styles.resourceText}>2400</Text>
+            </View>
+            <View style={styles.resourceItem}>
+              <Text style={styles.resourceIcon}>🔧</Text>
+              <Text style={styles.resourceText}>1150</Text>
+            </View>
+            <TouchableOpacity style={styles.actionIconBtn}>
+              <Text style={styles.actionIcon}>✉️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionIconBtn}>
+              <Text style={styles.actionIcon}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.header}>
-           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Text style={styles.backBtnText}>{'< Dashboard'}</Text>
-           </TouchableOpacity>
            <Text style={styles.title}>Your Progress</Text>
            <Text style={styles.subtitle}>Track your social engineering defense skills</Text>
         </View>
@@ -213,6 +236,73 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#7f8c8d',
     fontSize: normalize(12),
+  },
+  topBarContainer: {
+    height: normalize(48),
+    backgroundColor: 'rgba(5, 12, 24, 0.9)',
+    borderBottomWidth: bw(1),
+    borderTopWidth: bw(1),
+    borderColor: '#bda05e',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: normalize(16),
+    marginTop: normalize(20),
+  },
+  leftHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  backButton: {
+    width: normalize(38),
+    height: normalize(38),
+    borderRadius: normalize(19),
+    borderWidth: bw(2),
+    borderColor: '#bda05e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10, 15, 25, 0.9)',
+    marginRight: normalize(12),
+  },
+  backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: normalize(16),
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: normalize(12),
+    letterSpacing: 1,
+  },
+  topRightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  resourceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: normalize(10),
+    paddingVertical: normalize(4),
+    borderRadius: normalize(12),
+    marginLeft: normalize(12),
+  },
+  resourceIcon: {
+    fontSize: normalize(12),
+  },
+  resourceText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: normalize(10),
+    marginLeft: normalize(6),
+  },
+  actionIconBtn: {
+    marginLeft: normalize(16),
+  },
+  actionIcon: {
+    fontSize: normalize(16),
   },
   
   // === CARDS ===
