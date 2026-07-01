@@ -12,8 +12,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-// npx expo install expo-linear-gradient   (or react-native-linear-gradient on bare RN)
-// This is what gives DEPLOY its gold -> orange -> red fill instead of a flat color.
 
 const BASE_WIDTH = 932; // the width the mockup was authored on
 
@@ -101,20 +99,15 @@ export default function DashboardScreen({ navigation }: any) {
               <TouchableOpacity style={styles.navButton}>
                 <Text style={styles.navButtonText}>Intel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.navButton}  onPress={() => navigation.navigate('Progress')}>
+              <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Progress')}>
                 <Text style={styles.navButtonText}>Progress</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.deployButtonOuter} activeOpacity={0.85}  onPress={() => navigation.navigate('MissionBriefing')}>
-              <LinearGradient
-                colors={['#ffe28a', '#ffa634', '#d94d10']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.deployButtonInner}
-              >
+            <TouchableOpacity style={styles.deployButtonOuter} activeOpacity={0.85} onPress={() => navigation.navigate('MissionBriefing')}>
+              <View style={[styles.deployButtonInner, { backgroundColor: '#ffa634' }]}>
                 <Text style={styles.deployText}>DEPLOY</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </View>
         </SafeAreaView>

@@ -145,7 +145,12 @@ export function LoginScreen({ onLogin }: Props) {
       </KeyboardAvoidingView>
 
       {/* ── MFA Modal ── */}
-      <Modal visible={mfaVisible} transparent animationType="fade">
+      <Modal
+        visible={mfaVisible}
+        transparent
+        animationType="fade"
+        supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}

@@ -5,7 +5,7 @@ import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-star
 
 import SplashAnimationScreen from './src/screens/SplashAnimationScreen';
 import IntroScreen from './src/screens/IntroScreen';
-import { LoginScreen } from './src/screens/LoginScreen'; 
+import { LoginScreen } from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MissionBriefingScreen from './src/screens/MissionBriefingScreen';
 import GameScreen from './src/screens/GameScreen';
@@ -23,7 +23,7 @@ export default function App() {
 
   // Wait until font is loaded before rendering
   if (!fontsLoaded) {
-    return null; 
+    return null;
   }
 
   return (
@@ -33,16 +33,19 @@ export default function App() {
         <Stack.Screen name="Intro" component={IntroScreen} />
         <Stack.Screen name="Login">
           {(props) => (
-            <LoginScreen 
-              {...props} 
+            <LoginScreen
+              {...props}
               onLogin={() => {
-                props.navigation.replace('Dashboard'); 
-              }} 
+                props.navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Dashboard' }],
+                });
+              }}
             />
           )}
-        </Stack.Screen>        
+        </Stack.Screen>
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="MissionBriefing" component={MissionBriefingScreen} /> 
+        <Stack.Screen name="MissionBriefing" component={MissionBriefingScreen} />
         <Stack.Screen name="Game" component={GameScreen} />
         <Stack.Screen name="Progress" component={ProgressScreen} />
       </Stack.Navigator>

@@ -105,7 +105,12 @@ export default function GameScreen({ navigation }: any) {
 
         </SafeAreaView>
       </ImageBackground>
-      <Modal visible={isMenuVisible} transparent animationType="fade">
+        <Modal
+        visible={isMenuVisible}
+        transparent
+        animationType="fade"
+        supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.menuContainer}>
             <Text style={styles.menuTitle}>PAUSED</Text>
