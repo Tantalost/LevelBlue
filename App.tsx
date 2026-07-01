@@ -1,11 +1,13 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p'; // <-- Import font
+import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 
 import SplashAnimationScreen from './src/screens/SplashAnimationScreen';
 import IntroScreen from './src/screens/IntroScreen';
 import { LoginScreen } from './src/screens/LoginScreen'; 
+import DashboardScreen from './src/screens/DashboardScreen';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -29,10 +31,13 @@ export default function App() {
           {(props) => (
             <LoginScreen 
               {...props} 
-              onLogin={() => console.log('MFA Success!')} 
+              onLogin={() => {
+                props.navigation.replace('Dashboard'); 
+              }} 
             />
           )}
-        </Stack.Screen>
+        </Stack.Screen>        
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
