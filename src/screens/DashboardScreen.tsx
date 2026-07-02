@@ -234,7 +234,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingRight: normalize(16),
-    marginTop: normalize(20), // Gives room for the avatar to overhang the top
   },
   playerSection: {
     flexDirection: 'row',
@@ -365,7 +364,7 @@ const styles = StyleSheet.create({
   playArea: {
     position: 'absolute',
     bottom: normalize(24),
-    right: normalize(24),
+    right: normalize(0),
     flexDirection: 'row',
     alignItems: 'flex-end',
   },
@@ -398,8 +397,8 @@ const styles = StyleSheet.create({
 
   // Outer glowing/cyan border matching TFT's play button
   playButtonOuter: {
-    width: normalize(200),
-    height: normalize(56),
+    width: normalize(300),
+    height: normalize(70),
     borderRadius: normalize(28),
     backgroundColor: '#0c5c87', // Outer Cyan/blue
     padding: bw(2),

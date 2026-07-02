@@ -133,7 +133,7 @@ function CornerBrackets({
 function ScanlineOverlay() {
   const lines = Array.from({ length: 60 });
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
       {lines.map((_, i) => (
         <View
           key={i}
@@ -281,7 +281,11 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY,
   },
   darkOverlay: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(5, 8, 20, 0.55)',
   },
   edgeLine: {
@@ -396,7 +400,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   buttonGlowBg: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderRadius: 4,
     backgroundColor: 'rgba(0,212,255,0.07)',
   },
@@ -406,6 +414,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 14,
     height: 14,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.25)',
   },
 
   // ── Bottom strip ──
