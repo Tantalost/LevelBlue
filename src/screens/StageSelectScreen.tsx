@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -60,28 +60,28 @@ const BUILDINGS: {
   color: string;
   buffLabel: (level: number) => string;
 }[] = [
-  {
-    key: "tower",
-    name: "Tower Keep",
-    icon: "🏯",
-    color: "#5ac8ff",
-    buffLabel: (level) => `+${8 * level} DMG`,
-  },
-  {
-    key: "glade",
-    name: "Forest Glade",
-    icon: "🌳",
-    color: "#3fbf7f",
-    buffLabel: (level) => `+${(0.5 * level).toFixed(1)} RANGE`,
-  },
-  {
-    key: "forge",
-    name: "Arcane Forge",
-    icon: "⚒️",
-    color: "#7f6fff",
-    buffLabel: (level) => `-${200 * level}ms CD`,
-  },
-];
+    {
+      key: "tower",
+      name: "Tower Keep",
+      icon: "🏯",
+      color: "#5ac8ff",
+      buffLabel: (level) => `+${8 * level} DMG`,
+    },
+    {
+      key: "glade",
+      name: "Forest Glade",
+      icon: "🌳",
+      color: "#3fbf7f",
+      buffLabel: (level) => `+${(0.5 * level).toFixed(1)} RANGE`,
+    },
+    {
+      key: "forge",
+      name: "Arcane Forge",
+      icon: "⚒️",
+      color: "#7f6fff",
+      buffLabel: (level) => `-${200 * level}ms CD`,
+    },
+  ];
 
 // A handful of fixed, twinkling background stars — same technique as the
 // FloatingDot component on the intro screen, just simplified to plain
@@ -161,24 +161,25 @@ export default function StageSelectScreen({
 }: StageSelectScreenProps) {
   const stars = useMemo(() => STAR_LAYOUT, []);
 
+  // NEW: State for tracking which stage the user wants to confirm
+  const [selectedConfirmStage, setSelectedConfirmStage] = useState<number | null>(null);
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      supportedOrientations={[
-        "landscape",
-        "landscape-left",
-        "landscape-right",
-      ]}
+      supportedOrientations={["landscape", "landscape-left", "landscape-right"]}
     >
       <View style={styles.screen}>
+        {/* 1. RESTORED: The Stars Background */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {stars.map((star, index) => (
             <Star key={index} {...star} />
           ))}
         </View>
 
+        {/* 2. RESTORED: The Top Title Bar */}
         <View style={styles.topBar}>
           <Text style={styles.moduleTitle}>{moduleName}</Text>
           <Text style={styles.moduleSubtitle}>
@@ -187,8 +188,7 @@ export default function StageSelectScreen({
           <View style={styles.titleUnderline} />
         </View>
 
-        {/* Three upgradeable buildings — tap one to spend materials and
-            grow it, piece by piece, into the next level. */}
+        {/* 3. RESTORED: The Building Upgrades Row */}
         <View style={styles.buildingRow}>
           {BUILDINGS.map((building) => {
             const level = buildingLevels[building.key];
@@ -230,9 +230,6 @@ export default function StageSelectScreen({
             {STAGE_NUMBERS.map((stage) => {
               const isPostTest = stage === POST_TEST_STAGE;
               const isActive = currentStage === stage;
-              // Stage 1 is always open. Anything past the player's
-              // highest-unlocked stage is locked until the one before it
-              // is beaten.
               const isLocked = stage > highestUnlockedStage;
               return (
                 <TouchableOpacity
@@ -244,8 +241,10 @@ export default function StageSelectScreen({
                     isActive && styles.stageChipActive,
                     isLocked && styles.stageChipLocked,
                   ]}
-                  onPress={() => onSelectStage(stage)}
+                  // The new confirmation trigger
+                  onPress={() => setSelectedConfirmStage(stage)}
                 >
+                  {/* 4. RESTORED: The Chip Content (Numbers and Icons) */}
                   {isLocked ? (
                     <Text style={styles.stageChipLockIcon}>🔒</Text>
                   ) : isPostTest ? (
@@ -280,6 +279,42 @@ export default function StageSelectScreen({
           <Text style={styles.homeButtonText}>HOME</Text>
         </TouchableOpacity>
       </View>
+
+      {/* NEW: Confirmation Modal */}
+      <Modal
+        visible={selectedConfirmStage !== null}
+        transparent
+        animationType="fade"
+        supportedOrientations={["landscape", "landscape-left", "landscape-right"]}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitle}>CONFIRM DEPLOYMENT</Text>
+            <Text style={styles.confirmText}>
+              Are you sure you want to run Stage {selectedConfirmStage}?
+            </Text>
+            <View style={styles.confirmButtonRow}>
+              <TouchableOpacity
+                style={styles.confirmBtnNo}
+                onPress={() => setSelectedConfirmStage(null)}
+              >
+                <Text style={styles.confirmBtnText}>NO</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmBtnYes}
+                onPress={() => {
+                  if (selectedConfirmStage !== null) {
+                    onSelectStage(selectedConfirmStage);
+                    setSelectedConfirmStage(null);
+                  }
+                }}
+              >
+                <Text style={styles.confirmBtnText}>YES</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -451,5 +486,58 @@ const styles = StyleSheet.create({
     color: "#f3d9ff",
     fontFamily: "PixelFont",
     fontSize: normalize(12),
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  confirmBox: {
+    backgroundColor: "#1a1016",
+    borderWidth: bw(3),
+    borderColor: "#3fbf7f",
+    borderRadius: normalize(12),
+    padding: normalize(24),
+    alignItems: "center",
+    width: normalize(400),
+  },
+  confirmTitle: {
+    color: "#3fbf7f",
+    fontFamily: "PixelFont",
+    fontSize: normalize(20),
+    marginBottom: normalize(16),
+  },
+  confirmText: {
+    color: "#fff",
+    fontFamily: "PixelFont",
+    fontSize: normalize(14),
+    marginBottom: normalize(24),
+    textAlign: "center",
+  },
+  confirmButtonRow: {
+    flexDirection: "row",
+    gap: normalize(20),
+  },
+  confirmBtnNo: {
+    backgroundColor: "#1a1016",
+    borderWidth: bw(2),
+    borderColor: "#ff6363",
+    borderRadius: normalize(8),
+    paddingVertical: normalize(10),
+    paddingHorizontal: normalize(24),
+  },
+  confirmBtnYes: {
+    backgroundColor: "#3fbf7f",
+    borderWidth: bw(2),
+    borderColor: "#fff",
+    borderRadius: normalize(8),
+    paddingVertical: normalize(10),
+    paddingHorizontal: normalize(24),
+  },
+  confirmBtnText: {
+    color: "#fff",
+    fontFamily: "PixelFont",
+    fontSize: normalize(16),
   },
 });

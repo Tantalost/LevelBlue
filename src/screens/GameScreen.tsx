@@ -71,13 +71,14 @@ const ResourceItem = ({ icon, value }: { icon: string; value: string }) => (
   </View>
 );
 
-export default function GameScreen({ navigation }: any) {
+export default function GameScreen({ route, navigation }: any) {
+  const initialStage = route?.params?.stage || 1;
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [gold, setGold] = useState(60);
   const [baseHealth, setBaseHealth] = useState(1);
-  const [waveCount, setWaveCount] = useState(1);
+  const [waveCount, setWaveCount] = useState(initialStage);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [towers, setTowers] = useState<Tower[]>([]);
   const [message, setMessage] = useState(
@@ -92,7 +93,7 @@ export default function GameScreen({ navigation }: any) {
     y: number;
   } | null>(null);
   const [isUpgradeVisible, setIsUpgradeVisible] = useState(false);
-  const [currentStage, setCurrentStage] = useState(1);
+  const [currentStage, setCurrentStage] = useState(initialStage);
   const [buildingLevels, setBuildingLevels] = useState<BuildingLevels>({
     tower: 1,
     glade: 1,
@@ -113,7 +114,7 @@ export default function GameScreen({ navigation }: any) {
   const towerIdRef = useRef(1);
   const spawnTimerRef = useRef(0);
   const waveSpawnedRef = useRef(0);
-  const waveCountRef = useRef(1);
+  const waveCountRef = useRef(initialStage);
 
   // The board's PanResponder is created once (via useRef) and lives for the
   // whole component lifetime, so its callbacks close over whatever these
