@@ -1,23 +1,70 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  Dimensions,
+  useWindowDimensions,
   PixelRatio,
   Animated,
+  PanResponder,
   StatusBar,
 } from 'react-native';
 
-// ── Scaling ──────────────────────────────────────────────────────────────────
-const { width: SW, height: SH } = Dimensions.get('window');
-const PW = Math.min(SW, SH);
-const PH = Math.max(SW, SH);
-const scaleP = Math.min(PW / 390, PH / 844, 1.0);
-const s  = (n: number) => Math.round(PixelRatio.roundToNearestPixel(n * scaleP));
-const bw = (n: number) => Math.max(1, s(n));
+/**
+ * ── Mobile pass — what changed and why ──────────────────────────────────
+ *
+ * 1. THE BUG (why the progress bar + CTA were disappearing):
+ *    `carouselWrap` used `alignItems: 'center'`. In a row container, that
+ *    means children are sized by their OWN content, not stretched to fill
+ *    the row's height. So the flex:1 card never got a real, definite
+ *    height to lay out against — it just hugged its content, and on
+ *    shorter/wider viewports that left no room for the progress bar and
+ *    CTA, which then got clipped by the card's `overflow: hidden`.
+ *    Fix: `alignItems: 'stretch'` on the row, `alignSelf: 'center'` on the
+ *    arrows only. Now the card always gets the full available height.
+ *
+ * 2. LESS CHROME, MORE ROOM: dots + arrows + a full module strip were
+ *    three controls doing the same job. Removed the dot row entirely —
+ *    its job (which module am I on) now lives in a small "01/05" badge
+ *    in the header, so the card reclaims that vertical space.
+ *
+ * 3. READABILITY FLOOR: the scale factor used to shrink freely on small
+ *    screens. It's now clamped (0.85–1.15), so text never drops below a
+ *    comfortable size — short screens get tighter *spacing*, not smaller
+ *    *text*, which is what actually makes something feel "too tight."
+ *
+ * 4. GAME FEEL: swipe-to-navigate on the card itself, an animated
+ *    progress fill, a soft pulsing glow on the CTA, and a colored HUD
+ *    strip along the top of the card. Kept to a few deliberate touches
+ *    rather than decorating everything.
+ *
+ * Note: two labels (the header title and the CTA) use PIXEL_FONT to match
+ * the game's Press Start 2P branding — deliberately NOT applied to the
+ * numeric badges or body copy, since blocky pixel type turns illegible at
+ * small sizes. Swap the font name below if yours is registered differently.
+ */
+
+// ── Responsive scaling ───────────────────────────────────────────────────
+const BASE_W = 390;
+const BASE_H = 844;
+const COMPACT_HEIGHT = 700; // shorter than this = tighter spacing, same font sizes
+const PIXEL_FONT = 'PressStart2P-Regular';
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function useScale() {
+  const { width, height } = useWindowDimensions();
+  const scaleP = clamp(Math.min(width / BASE_W, height / BASE_H), 0.85, 1.15);
+  const isCompact = height < COMPACT_HEIGHT;
+  const s = (n: number) => Math.round(PixelRatio.roundToNearestPixel(n * scaleP));
+  const bw = (n: number) => Math.max(1, s(n));
+  const scaleKey = Math.round(scaleP * 100); // stable dep for useMemo
+  return { s, bw, isCompact, scaleKey };
+}
 
 // ── Module Data ───────────────────────────────────────────────────────────────
 export const MODULES = [
@@ -83,28 +130,58 @@ function ModuleCard({
   module,
   onPress,
   isActive,
+  s,
+  bw,
+  isCompact,
+  scaleKey,
 }: {
   module: typeof MODULES[0];
   onPress: () => void;
   isActive: boolean;
+  s: (n: number) => number;
+  bw: (n: number) => number;
+  isCompact: boolean;
+  scaleKey: number;
 }) {
   const { accentColor, unlocked } = module;
+  const cs = useMemo(() => makeCardStyles(s, bw, isCompact), [scaleKey, isCompact]);
+
+  // Animated progress fill — replays whenever the shown module changes.
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    progressAnim.setValue(0);
+    Animated.timing(progressAnim, {
+      toValue: module.progress,
+      duration: 550,
+      useNativeDriver: false, // width can't use the native driver
+    }).start();
+  }, [module.id]);
+
+  // Soft breathing glow behind the CTA — only while the module is playable.
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!unlocked) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1100, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1100, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [unlocked, module.id]);
 
   return (
     <TouchableOpacity
       activeOpacity={unlocked ? 0.85 : 1}
       onPress={unlocked ? onPress : undefined}
-      style={[
-        cs.card,
-        isActive && cs.cardActive,
-        { borderColor: isActive ? accentColor : '#1e3050' },
-        !unlocked && cs.cardLocked,
-      ]}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !unlocked }}
+      accessibilityLabel={`${module.title}, ${module.progress}% complete${unlocked ? '' : ', locked'}`}
+      style={[cs.card, { borderColor: isActive ? accentColor : '#1e3050' }, !unlocked && cs.cardLocked]}
     >
-      {/* Glow layer when active */}
-      {isActive && (
-        <View style={[cs.cardGlow, { backgroundColor: accentColor + '18' }]} />
-      )}
+      {/* HUD accent strip — reinforces the module's color at a glance */}
+      <View style={[cs.topAccent, { backgroundColor: accentColor }]} />
 
       {/* Lock overlay */}
       {!unlocked && (
@@ -119,17 +196,26 @@ function ModuleCard({
         <Text style={[cs.numChipTxt, { color: accentColor }]}>MODULE {module.id}</Text>
       </View>
 
-      {/* Icon */}
-      <Text style={cs.moduleIcon}>{module.icon}</Text>
+      {/* Icon, framed in a badge for more depth than a bare emoji */}
+      <View style={[cs.iconBadge, { borderColor: accentColor + '80', backgroundColor: accentColor + '15' }]}>
+        <Text style={cs.moduleIcon}>{module.icon}</Text>
+      </View>
 
-      {/* Title + subtitle */}
-      <Text style={[cs.moduleTitle, { color: unlocked ? '#e8f0ff' : '#3a4a60' }]}>{module.title}</Text>
-      <Text style={[cs.moduleSub, { color: unlocked ? '#5a7aaa' : '#2a3444' }]}>{module.subtitle}</Text>
+      {/* Title + subtitle — clamped so a long string can never push the footer out */}
+      <Text style={[cs.moduleTitle, { color: unlocked ? '#e8f0ff' : '#3a4a60' }]} numberOfLines={2}>
+        {module.title}
+      </Text>
+      <Text style={[cs.moduleSub, { color: unlocked ? '#8aa8d0' : '#2a3444' }]} numberOfLines={2}>
+        {module.subtitle}
+      </Text>
 
-      {/* Progress bar */}
-      <View style={cs.progressSection}>
+      {/* Flexible spacer — pushes the footer to the bottom without relying
+          on `marginTop: auto`, so it never silently collapses to 0. */}
+      <View style={cs.spacer} />
+
+      <View>
         <View style={cs.progressRow}>
-          <Text style={[cs.progressLabel, { color: unlocked ? '#5a7aaa' : '#2a3444' }]}>
+          <Text style={[cs.progressLabel, { color: unlocked ? '#8aa8d0' : '#2a3444' }]}>
             {module.lessonsComplete}/{module.totalLessons} Lessons
           </Text>
           <Text style={[cs.progressPct, { color: unlocked ? accentColor : '#2a3444' }]}>
@@ -138,42 +224,79 @@ function ModuleCard({
         </View>
         <View style={cs.barTrack}>
           {unlocked && (
-            <View
-              style={[cs.barFill, { width: `${module.progress}%`, backgroundColor: accentColor }]}
+            <Animated.View
+              style={[
+                cs.barFill,
+                {
+                  backgroundColor: accentColor,
+                  width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+                },
+              ]}
             />
           )}
         </View>
-      </View>
 
-      {/* CTA */}
-      {unlocked && isActive && (
-        <View style={[cs.cta, { borderColor: accentColor, backgroundColor: accentColor + '22' }]}>
-          <Text style={[cs.ctaTxt, { color: accentColor }]}>
-            {module.progress === 0 ? '▶  START MODULE' : '▶  CONTINUE'}
-          </Text>
-        </View>
-      )}
+        {unlocked && isActive && (
+          <View style={cs.ctaWrap}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                cs.ctaGlow,
+                {
+                  backgroundColor: accentColor,
+                  opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.4] }),
+                },
+              ]}
+            />
+            <View style={[cs.cta, { borderColor: accentColor, backgroundColor: accentColor + '22' }]}>
+              <Text style={[cs.ctaTxt, { color: accentColor }]} numberOfLines={1}>
+                {module.progress === 0 ? '▶ START' : '▶ CONTINUE'}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function LessonsScreen({ navigation }: any) {
+  const { s, bw, isCompact, scaleKey } = useScale();
+  const ls = useMemo(() => makeScreenStyles(s, bw, isCompact), [scaleKey, isCompact]);
+
   const [activeIdx, setActiveIdx] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const goTo = (nextIdx: number) => {
-    if (nextIdx < 0 || nextIdx >= MODULES.length) return;
+    if (nextIdx < 0 || nextIdx >= MODULES.length || nextIdx === activeIdx) return;
     const direction = nextIdx > activeIdx ? -1 : 1;
-    // Quick slide out → update → slide in
-    Animated.sequence([
-      Animated.timing(slideAnim, { toValue: direction * 40, duration: 120, useNativeDriver: true }),
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: direction * 30, duration: 120, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
     ]).start(() => {
       setActiveIdx(nextIdx);
-      slideAnim.setValue(-direction * 40);
-      Animated.timing(slideAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start();
+      slideAnim.setValue(-direction * 30);
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 160, useNativeDriver: true }),
+      ]).start();
     });
   };
+
+  // Swipe the card itself — a tap still opens it, a deliberate horizontal
+  // drag moves between modules. Threshold keeps it from fighting the tap.
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, g) =>
+        Math.abs(g.dx) > 14 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -36) goTo(activeIdx + 1);
+        else if (g.dx > 36) goTo(activeIdx - 1);
+      },
+    })
+  ).current;
 
   const active = MODULES[activeIdx];
 
@@ -183,55 +306,66 @@ export default function LessonsScreen({ navigation }: any) {
 
       {/* ── Header ── */}
       <View style={ls.header}>
-        <TouchableOpacity style={ls.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={ls.backBtn}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Text style={ls.backBtnTxt}>←</Text>
         </TouchableOpacity>
-        <Text style={ls.headerTitle}>LESSONS</Text>
-        <Text style={ls.headerSub}>Select a Module</Text>
-      </View>
 
-      {/* ── Dot indicators ── */}
-      <View style={ls.dots}>
-        {MODULES.map((_, i) => (
-          <TouchableOpacity key={i} onPress={() => goTo(i)}>
-            <View
-              style={[
-                ls.dot,
-                i === activeIdx && ls.dotActive,
-                i === activeIdx && { backgroundColor: active.accentColor },
-              ]}
-            />
-          </TouchableOpacity>
-        ))}
+        <View style={ls.headerTextWrap}>
+          <Text style={ls.headerTitle}>LESSONS</Text>
+          <Text style={ls.headerCaption}>Choose your training module</Text>
+        </View>
+
+        {/* Replaces the old dot row — same "where am I" job, zero extra height */}
+        <View
+          style={[
+            ls.moduleBadge,
+            { borderColor: active.accentColor + '80', backgroundColor: active.accentColor + '18' },
+          ]}
+        >
+          <Text style={[ls.moduleBadgeTxt, { color: active.accentColor }]}>
+            {String(activeIdx + 1).padStart(2, '0')}/{String(MODULES.length).padStart(2, '0')}
+          </Text>
+        </View>
       </View>
 
       {/* ── Carousel ── */}
       <View style={ls.carouselWrap}>
-        {/* Left arrow */}
         <TouchableOpacity
-          style={[ls.arrow, ls.arrowLeft, activeIdx === 0 && ls.arrowDisabled]}
+          style={[ls.arrow, activeIdx === 0 && ls.arrowDisabled]}
           onPress={() => goTo(activeIdx - 1)}
           disabled={activeIdx === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Previous module"
         >
           <Text style={ls.arrowTxt}>‹</Text>
         </TouchableOpacity>
 
-        {/* Active card */}
-        <Animated.View style={[ls.cardSlot, { transform: [{ translateX: slideAnim }] }]}>
+        <Animated.View
+          style={[ls.cardSlot, { transform: [{ translateX: slideAnim }], opacity: fadeAnim }]}
+          {...panResponder.panHandlers}
+        >
           <ModuleCard
             module={active}
             isActive
-            onPress={() =>
-              navigation.navigate('ModuleDetail', { moduleId: active.id })
-            }
+            onPress={() => navigation.navigate('ModuleDetail', { moduleId: active.id })}
+            s={s}
+            bw={bw}
+            isCompact={isCompact}
+            scaleKey={scaleKey}
           />
         </Animated.View>
 
-        {/* Right arrow */}
         <TouchableOpacity
-          style={[ls.arrow, ls.arrowRight, activeIdx === MODULES.length - 1 && ls.arrowDisabled]}
+          style={[ls.arrow, activeIdx === MODULES.length - 1 && ls.arrowDisabled]}
           onPress={() => goTo(activeIdx + 1)}
           disabled={activeIdx === MODULES.length - 1}
+          accessibilityRole="button"
+          accessibilityLabel="Next module"
         >
           <Text style={ls.arrowTxt}>›</Text>
         </TouchableOpacity>
@@ -247,11 +381,12 @@ export default function LessonsScreen({ navigation }: any) {
               i === activeIdx && { borderColor: m.accentColor, backgroundColor: m.accentColor + '18' },
             ]}
             onPress={() => goTo(i)}
+            accessibilityRole="button"
+            accessibilityLabel={`${m.title}${m.unlocked ? '' : ', locked'}`}
           >
             <Text style={ls.stripIcon}>{m.icon}</Text>
-            <Text style={[ls.stripNum, i === activeIdx && { color: m.accentColor }]}>
-              M{m.id}
-            </Text>
+            <Text style={[ls.stripNum, i === activeIdx && { color: m.accentColor }]}>M{m.id}</Text>
+            <View style={[ls.stripDot, m.unlocked && { backgroundColor: m.accentColor }]} />
           </TouchableOpacity>
         ))}
       </View>
@@ -260,187 +395,195 @@ export default function LessonsScreen({ navigation }: any) {
 }
 
 // ── Card Styles ───────────────────────────────────────────────────────────────
-const cs = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#0c1525',
-    borderWidth: bw(2),
-    borderRadius: s(20),
-    padding: s(22),
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardActive: {
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
-  },
-  cardLocked: {
-    opacity: 0.7,
-  },
-  cardGlow: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: s(20),
-  },
-  lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,14,26,0.75)',
-    borderRadius: s(20),
-    zIndex: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: s(10),
-  },
-  lockIcon: { fontSize: s(36) },
-  lockText: { color: '#5a7aaa', fontSize: s(12), textAlign: 'center' },
+function makeCardStyles(s: (n: number) => number, bw: (n: number) => number, isCompact: boolean) {
+  const pad = s(isCompact ? 18 : 22);
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: '#0c1525',
+      borderWidth: bw(2),
+      borderRadius: s(18),
+      padding: pad,
+      paddingTop: pad + s(6), // clears the top accent bar
+      paddingBottom: pad + s(10), // extra clearance so the CTA never sits inside the corner curve
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    cardLocked: { opacity: 0.75 },
 
-  numChip: {
-    alignSelf: 'flex-start',
-    borderWidth: bw(1),
-    borderRadius: s(20),
-    paddingHorizontal: s(12),
-    paddingVertical: s(4),
-    marginBottom: s(16),
-  },
-  numChipTxt: {
-    fontSize: s(10),
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  moduleIcon: { fontSize: s(48), marginBottom: s(12) },
-  moduleTitle: { fontSize: s(20), fontWeight: 'bold', marginBottom: s(8) },
-  moduleSub:   { fontSize: s(13), lineHeight: s(20), marginBottom: s(20) },
+    topAccent: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: s(4),
+    },
 
-  progressSection: { marginTop: 'auto' as any },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: s(6),
-  },
-  progressLabel: { fontSize: s(11) },
-  progressPct:   { fontSize: s(11), fontWeight: 'bold' },
-  barTrack: {
-    height: s(6),
-    backgroundColor: '#0f1e35',
-    borderRadius: s(3),
-    overflow: 'hidden',
-    marginBottom: s(16),
-  },
-  barFill: { height: '100%', borderRadius: s(3) },
+    lockOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(8,14,26,0.82)',
+      zIndex: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: s(10),
+      paddingHorizontal: s(28),
+    },
+    lockIcon: { fontSize: s(34) },
+    lockText: { color: '#7f9bc4', fontSize: s(12), textAlign: 'center', lineHeight: s(18) },
 
-  cta: {
-    borderWidth: bw(1.5),
-    borderRadius: s(10),
-    paddingVertical: s(12),
-    alignItems: 'center',
-  },
-  ctaTxt: { fontSize: s(13), fontWeight: 'bold', letterSpacing: 1 },
-});
+    numChip: {
+      alignSelf: 'flex-start',
+      borderWidth: bw(1),
+      borderRadius: s(20),
+      paddingHorizontal: s(12),
+      paddingVertical: s(5),
+      marginBottom: s(isCompact ? 10 : 14),
+    },
+    numChipTxt: { fontSize: s(10), fontWeight: '900', letterSpacing: 1.5 },
+
+    iconBadge: {
+      width: s(isCompact ? 50 : 58),
+      height: s(isCompact ? 50 : 58),
+      borderRadius: s(isCompact ? 25 : 29),
+      borderWidth: bw(2),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: s(isCompact ? 10 : 14),
+    },
+    moduleIcon: { fontSize: s(isCompact ? 24 : 27) },
+
+    moduleTitle: { fontSize: s(18), fontWeight: '800', marginBottom: s(6), lineHeight: s(23) },
+    moduleSub: { fontSize: s(13), lineHeight: s(19) },
+
+    spacer: { flex: 1, minHeight: s(10) },
+
+    progressRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+      marginBottom: s(6),
+    },
+    progressLabel: { fontSize: s(11) },
+    progressPct: { fontSize: s(12), fontWeight: 'bold' },
+    barTrack: {
+      height: s(7),
+      backgroundColor: '#0f1e35',
+      borderRadius: s(4),
+      overflow: 'hidden',
+      marginBottom: s(isCompact ? 12 : 16),
+    },
+    barFill: { height: '100%', borderRadius: s(4) },
+
+    ctaWrap: {
+      marginHorizontal: s(4), // keeps the button's own rounded corners clear of the card's outer curve
+    },
+    ctaGlow: {
+      position: 'absolute',
+      top: -s(4),
+      left: -s(4),
+      right: -s(4),
+      bottom: -s(2),
+      borderRadius: s(14),
+    },
+    cta: {
+      borderWidth: bw(1.5),
+      borderRadius: s(10),
+      paddingVertical: s(isCompact ? 10 : 12),
+      alignItems: 'center',
+    },
+    ctaTxt: { fontFamily: PIXEL_FONT, fontSize: s(12), letterSpacing: 1 },
+  });
+}
 
 // ── Screen Styles ─────────────────────────────────────────────────────────────
-const ls = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#080e1a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: s(20),
-    paddingVertical: s(12),
-    borderBottomWidth: bw(1),
-    borderBottomColor: '#bda05e',
-    backgroundColor: '#0c1525',
-    gap: s(12),
-  },
-  backBtn: {
-    width: s(36),
-    height: s(36),
-    borderRadius: s(18),
-    borderWidth: bw(2),
-    borderColor: '#bda05e',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(10,15,25,0.9)',
-  },
-  backBtnTxt: { color: '#fff', fontSize: s(16) },
-  headerTitle: {
-    color: '#fff',
-    fontSize: s(14),
-    fontWeight: 'bold',
-    letterSpacing: 2,
-  },
-  headerSub: {
-    color: '#5a7aaa',
-    fontSize: s(11),
-    marginLeft: 'auto' as any,
-  },
+function makeScreenStyles(s: (n: number) => number, bw: (n: number) => number, isCompact: boolean) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: '#080e1a',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: s(20),
+      paddingVertical: s(isCompact ? 10 : 13),
+      borderBottomWidth: bw(1),
+      borderBottomColor: '#bda05e',
+      backgroundColor: '#0c1525',
+      gap: s(12),
+    },
+    backBtn: {
+      width: s(40),
+      height: s(40),
+      borderRadius: s(20),
+      borderWidth: bw(2),
+      borderColor: '#bda05e',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(10,15,25,0.9)',
+    },
+    backBtnTxt: { color: '#fff', fontSize: s(17) },
+    headerTextWrap: { flex: 1 },
+    headerTitle: { fontFamily: PIXEL_FONT, color: '#fff', fontSize: s(13), letterSpacing: 2 },
+    headerCaption: { color: '#6f8bb5', fontSize: s(11), marginTop: s(4) },
+    moduleBadge: {
+      borderWidth: bw(1),
+      borderRadius: s(8),
+      paddingHorizontal: s(10),
+      paddingVertical: s(6),
+    },
+    moduleBadgeTxt: { fontSize: s(11), fontWeight: 'bold', letterSpacing: 0.5 },
 
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: s(8),
-    paddingVertical: s(12),
-  },
-  dot: {
-    width: s(8),
-    height: s(8),
-    borderRadius: s(4),
-    backgroundColor: '#1e3050',
-  },
-  dotActive: {
-    width: s(24),
-    borderRadius: s(4),
-  },
+    // `alignItems: 'stretch'` (not 'center') is the fix — see notes at top.
+    carouselWrap: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      paddingHorizontal: s(10),
+      paddingVertical: s(isCompact ? 10 : 16),
+      gap: s(8),
+    },
+    arrow: {
+      width: s(44),
+      height: s(44),
+      borderRadius: s(22),
+      backgroundColor: '#0c1525',
+      borderWidth: bw(1.5),
+      borderColor: '#1e3050',
+      justifyContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'center', // keep arrows centered even though the row now stretches
+    },
+    arrowDisabled: { opacity: 0.25 },
+    arrowTxt: { color: '#fff', fontSize: s(22), lineHeight: s(26), textAlign: 'center' },
+    cardSlot: { flex: 1 },
 
-  carouselWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: s(8),
-    gap: s(8),
-  },
-  arrow: {
-    width: s(40),
-    height: s(40),
-    borderRadius: s(20),
-    backgroundColor: '#0c1525',
-    borderWidth: bw(1.5),
-    borderColor: '#1e3050',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrowLeft:     {},
-  arrowRight:    {},
-  arrowDisabled: { opacity: 0.25 },
-  arrowTxt: {
-    color: '#fff',
-    fontSize: s(24),
-    lineHeight: s(28),
-    textAlign: 'center',
-  },
-  cardSlot: { flex: 1 },
-
-  strip: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: s(14),
-    paddingHorizontal: s(20),
-    gap: s(8),
-    borderTopWidth: bw(1),
-    borderTopColor: '#1e3050',
-  },
-  stripItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: s(8),
-    borderWidth: bw(1.5),
-    borderColor: '#1e3050',
-    borderRadius: s(10),
-    backgroundColor: '#0c1525',
-    gap: s(2),
-  },
-  stripIcon: { fontSize: s(16) },
-  stripNum:  { color: '#5a7aaa', fontSize: s(9), fontWeight: 'bold' },
-});
+    strip: {
+      flexDirection: 'row',
+      paddingVertical: s(isCompact ? 10 : 14),
+      paddingHorizontal: s(16),
+      gap: s(8),
+      borderTopWidth: bw(1),
+      borderTopColor: '#1e3050',
+    },
+    stripItem: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: s(isCompact ? 8 : 10),
+      borderWidth: bw(1.5),
+      borderColor: '#1e3050',
+      borderRadius: s(10),
+      backgroundColor: '#0c1525',
+      gap: s(3),
+    },
+    stripIcon: { fontSize: s(16) },
+    stripNum: { color: '#5a7aaa', fontSize: s(9), fontWeight: 'bold' },
+    stripDot: {
+      width: s(4),
+      height: s(4),
+      borderRadius: s(2),
+      backgroundColor: '#1e3050',
+      marginTop: s(2),
+    },
+  });
+}
