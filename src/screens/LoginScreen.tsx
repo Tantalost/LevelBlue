@@ -9,42 +9,87 @@ import {
   TextInput,
   View,
   Modal,
-  TouchableOpacity
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 
-// Assuming you have these in your project
-import { DEMO_STUDENT } from './data';
+import { supabase } from '../utils/supabase';
 import { LevelBlueButton } from './LevelBlueButton';
 
+// 1. ADDED 'navigation' to Props so we can intercept the route
 type Props = {
   onLogin: () => void;
+  navigation?: any; 
 };
 
-export function LoginScreen({ onLogin }: Props) {
-  const [email, setEmail] = useState(DEMO_STUDENT.email);
-  const [password, setPassword] = useState(DEMO_STUDENT.password);
+export function LoginScreen({ onLogin, navigation }: Props) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // === MFA States ===
   const [mfaVisible, setMfaVisible] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaError, setMfaError] = useState('');
 
-  function submit() {
-    if (email.trim().toLowerCase() === DEMO_STUDENT.email && password === DEMO_STUDENT.password) {
-      setError('');
-      // Trigger MFA Modal instead of logging in directly
-      setMfaVisible(true);
+  // === STEP 1: AUTHENTICATE ===
+  async function submit() {
+    if (!email || !password) {
+      setError('Enter your student email and password.');
       return;
     }
-    setError('Use the demo student account to enter LevelBlue.');
+
+    setError('');
+    setIsLoading(true);
+
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password,
+    });
+
+    setIsLoading(false);
+
+    // CRITICAL: Handle the error BEFORE querying the database
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+
+    // Auth Successful! Trigger the thematic MFA Modal FIRST.
+    setMfaVisible(true);
   }
 
-  function verifyMfa() {
+  // === STEP 2: VERIFY MFA AND CHECK FLAG ===
+  async function verifyMfa() {
     if (mfaCode.length === 6) {
       setMfaError('');
       setMfaVisible(false);
-      onLogin(); // Proceed to the game!
+
+      // 1. Fetch the user we just logged in
+      const { data: authData } = await supabase.auth.getUser();
+      
+      if (!authData.user) return;
+
+      // 2. Fetch their specific database flag
+      const { data: studentProfile, error: profileError } = await supabase
+        .from('students')
+        .select('requires_password_change')
+        .eq('id', authData.user.id)
+        .single();
+
+      // 3. Intercept the routing!
+      if (studentProfile?.requires_password_change === true) {
+        // Send them to the Force Change Screen
+        navigation?.reset({
+          index: 0,
+          routes: [{ name: 'ForcePasswordChange' }],
+        });
+      } else {
+        // Normal login, triggers the App.tsx routing to Dashboard
+        onLogin(); 
+      }
+
     } else {
       setMfaError('Code must be 6 digits.');
     }
@@ -69,15 +114,7 @@ export function LoginScreen({ onLogin }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
-
-            {/* ── module ribbon (full width strip) ── */}
-            <View style={styles.ribbon}>
-              <Text style={styles.ribbonText}>⚔  Module 1 — The Basics  ⚔</Text>
-            </View>
-
             <View style={styles.row}>
-
-              {/* ── left: branding ── */}
               <View style={styles.header}>
                 <Image
                   source={require('../assets/logo.png')}
@@ -87,24 +124,7 @@ export function LoginScreen({ onLogin }: Props) {
                 <Text style={styles.tagline}>Defend the city{'\n'}Spot the scam</Text>
               </View>
 
-              {/* ── right: form ── */}
               <View style={styles.body}>
-
-                {/* demo credentials box */}
-                <View style={styles.demoBox}>
-                  <View style={styles.demoAccent} />
-                  <Text style={styles.demoTitle}>Student Account</Text>
-                  <View style={styles.demoRow}>
-                    <Text style={styles.demoKey}>Email</Text>
-                    <Text style={styles.demoVal}>{DEMO_STUDENT.email}</Text>
-                  </View>
-                  <View style={styles.demoRow}>
-                    <Text style={styles.demoKey}>Pass</Text>
-                    <Text style={styles.demoVal}>{DEMO_STUDENT.password}</Text>
-                  </View>
-                </View>
-
-                {/* email + password side by side to save vertical space */}
                 <View style={styles.fieldRow}>
                   <View style={[styles.field, { flex: 1 }]}>
                     <Text style={styles.label}>Email</Text>
@@ -114,6 +134,7 @@ export function LoginScreen({ onLogin }: Props) {
                       onChangeText={setEmail}
                       style={styles.input}
                       value={email}
+                      editable={!isLoading}
                     />
                   </View>
 
@@ -124,19 +145,22 @@ export function LoginScreen({ onLogin }: Props) {
                       secureTextEntry
                       style={styles.input}
                       value={password}
+                      editable={!isLoading}
                     />
                   </View>
                 </View>
 
-                {/* error */}
                 {error ? (
                   <View style={styles.errorBox}>
                     <Text style={styles.errorText}>⚠  {error}</Text>
                   </View>
                 ) : null}
 
-                {/* login button */}
-                <LevelBlueButton label="▶  Log In" onPress={submit} />
+                {isLoading ? (
+                  <ActivityIndicator size="large" color="#F2B94B" style={{ marginTop: 10 }} />
+                ) : (
+                  <LevelBlueButton label="▶  Log In" onPress={submit} />
+                )}
 
               </View>
             </View>
@@ -180,7 +204,7 @@ export function LoginScreen({ onLogin }: Props) {
                     maxLength={6}
                     placeholder="000000"
                     placeholderTextColor="#7ab8d4"
-                    autoFocus // Automatically pop the keyboard
+                    autoFocus 
                   />
                 </View>
 
@@ -198,8 +222,9 @@ export function LoginScreen({ onLogin }: Props) {
                     style={styles.cancelBtn}
                     onPress={() => {
                       setMfaVisible(false);
-                      setMfaCode(''); // Reset code on cancel
+                      setMfaCode(''); 
                       setMfaError('');
+                      supabase.auth.signOut();
                     }}
                   >
                     <Text style={styles.cancelText}>Cancel</Text>
@@ -309,63 +334,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 18,
     gap: 14,
+    justifyContent: 'center', // Added to vertically center the new layout
   },
 
   fieldRow: {
     flexDirection: 'row',
     gap: 12,
-  },
-
-  // demo box
-  demoBox: {
-    backgroundColor: '#0b1827',
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#0a1520',
-    padding: 12,
-    gap: 4,
-    shadowColor: '#0a1520',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  demoAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 10,
-    width: 60,
-    height: 2,
-    backgroundColor: '#F2B94B',
-  },
-  demoTitle: {
-    color: '#F2B94B',
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 2,
-  },
-  demoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 1,
-  },
-  demoKey: {
-    color: '#5a8aaa',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    width: 50,
-  },
-  demoVal: {
-    color: '#e8e2d4',
-    fontSize: 12,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
   },
 
   field: {

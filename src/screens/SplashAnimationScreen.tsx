@@ -82,7 +82,7 @@ export default function SplashAnimationScreen({ navigation }: any) {
 
       {phase === 'studio' ? (
         <Animated.View style={{ opacity: studioFade, alignItems: 'center' }}>
-          <Text style={styles.studioText}>YOUR STUDIO NAME</Text>
+          <Text style={styles.studioText}>LEVEL BLUE</Text>
           <Text style={styles.presentsText}>PRESENTS</Text>
         </Animated.View>
       ) : (
