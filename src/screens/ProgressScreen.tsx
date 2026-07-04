@@ -9,192 +9,351 @@ import {
   Dimensions,
   PixelRatio,
 } from 'react-native';
-import Svg, { Polygon, Line, Text as SvgText, Circle } from 'react-native-svg';
+import Svg, { Polygon, Line, Text as SvgText, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
-const { width } = Dimensions.get('window');
-const BASE_WIDTH = 932; // Assuming Landscape
-const scaleFactor = width / BASE_WIDTH;
-const normalize = (size: number) => Math.round(PixelRatio.roundToNearestPixel(size * scaleFactor));
-const bw = (size: number) => Math.max(1, normalize(size));
+// ── Portrait-first scaling ──────────────────────────────────────────────────
+const { width: SW, height: SH } = Dimensions.get('window');
+// Always scale against the narrower (portrait) dimension
+const PW = Math.min(SW, SH);
+const PH = Math.max(SW, SH);
+const scaleByW = PW / 390;
+const scaleByH = PH / 844;
+const scaleP = Math.min(scaleByW, scaleByH, 1.0);
+const s = (n: number) => Math.round(PixelRatio.roundToNearestPixel(n * scaleP));
+const bw = (n: number) => Math.max(1, s(n));
 
-// ==========================================
-// CUSTOM RADAR CHART COMPONENT
-// ==========================================
-const RadarChart = ({ data }: { data: { label: string, value: number }[] }) => {
-  const size = normalize(300); // Size of the SVG canvas
-  const center = size / 2;
-  const radius = size * 0.35; // Leave room around edges for text labels
+// ── Radar Chart ─────────────────────────────────────────────────────────────
+interface RadarEntry { label: string; value: number; }
+
+const RadarChart = ({ data }: { data: RadarEntry[] }) => {
+  const canvasSize = s(280);
+  const cx = canvasSize / 2;
+  const cy = canvasSize / 2;
+  const R  = canvasSize * 0.32;   // data-polygon max radius
+  const labelR = canvasSize * 0.46; // push labels a bit further out
   const max = 100;
-  
-  // 6 points of a hexagon starting from the top
-  const angles = [
-    -Math.PI / 2,       // Top
-    -Math.PI / 6,       // Top Right
-    Math.PI / 6,        // Bottom Right
-    Math.PI / 2,        // Bottom
-    (5 * Math.PI) / 6,  // Bottom Left
-    (7 * Math.PI) / 6,  // Top Left
-  ];
+  const n = data.length;
 
-  const gridLevels = [0.33, 0.66, 1]; // 3 inner grid lines
-  
-  // Calculate the filled magenta polygon points based on data
-  const dataPoints = data.map((d, i) => {
-    const r = radius * (d.value / max);
-    return `${center + r * Math.cos(angles[i])},${center + r * Math.sin(angles[i])}`;
-  }).join(' ');
+  // Angles: start at top (-90°) and go clockwise
+  const angles = data.map((_, i) => (Math.PI * 2 * i) / n - Math.PI / 2);
+
+  // Helper: point on circle
+  const pt = (r: number, a: number) => ({
+    x: cx + r * Math.cos(a),
+    y: cy + r * Math.sin(a),
+  });
+
+  // Grid ring levels
+  const levels = [0.33, 0.66, 1.0];
+
+  // Data polygon
+  const dataPoints = data
+    .map((d, i) => {
+      const p = pt(R * (d.value / max), angles[i]);
+      return `${p.x},${p.y}`;
+    })
+    .join(' ');
+
+  // Grid polygon at a given fraction
+  const gridPoints = (frac: number) =>
+    angles.map(a => { const p = pt(R * frac, a); return `${p.x},${p.y}`; }).join(' ');
 
   return (
-    <View style={styles.radarContainer}>
-      <Svg width={size} height={size}>
-        
-        {/* Outer Dark Grey Circle Base */}
-        <Circle cx={center} cy={center} r={radius * 1.25} fill="#555d66" />
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={canvasSize} height={canvasSize}>
+        <Defs>
+          <RadialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor="#1a2a40" />
+            <Stop offset="100%" stopColor="#0a1020" />
+          </RadialGradient>
+        </Defs>
 
-        {/* Hexagon Background Grids */}
-        {gridLevels.map((level, index) => {
-          const points = angles.map(angle => 
-            `${center + radius * level * Math.cos(angle)},${center + radius * level * Math.sin(angle)}`
-          ).join(' ');
-          
-          return (
-            <Polygon 
-              key={index} 
-              points={points} 
-              // The outermost grid gets the muddy-yellow color from your image
-              fill={index === 2 ? '#b5a582' : 'transparent'} 
-              stroke="#000" 
-              strokeWidth="1" 
-            />
-          );
-        })}
-        
-        {/* Axes Lines radiating from center */}
-        {angles.map((angle, index) => (
-          <Line 
-            key={index}
-            x1={center} y1={center} 
-            x2={center + radius * Math.cos(angle)} y2={center + radius * Math.sin(angle)} 
-            stroke="#000" strokeWidth="1" 
+        {/* Background circle */}
+        <Circle cx={cx} cy={cy} r={R * 1.15} fill="url(#bgGrad)" stroke="#1e3050" strokeWidth={bw(1)} />
+
+        {/* Grid rings */}
+        {levels.map((frac, idx) => (
+          <Polygon
+            key={idx}
+            points={gridPoints(frac)}
+            fill="none"
+            stroke={idx === 2 ? '#2a4060' : '#1e3050'}
+            strokeWidth={bw(idx === 2 ? 1.5 : 1)}
           />
         ))}
 
-        {/* The Magenta Data Polygon */}
-        <Polygon 
-          points={dataPoints} 
-          fill="rgba(216, 0, 255, 0.9)" 
-          stroke="#000" 
-          strokeWidth="1" 
+        {/* Axis spokes */}
+        {angles.map((a, i) => {
+          const end = pt(R, a);
+          return (
+            <Line
+              key={i}
+              x1={cx} y1={cy}
+              x2={end.x} y2={end.y}
+              stroke="#1e3050"
+              strokeWidth={bw(1)}
+            />
+          );
+        })}
+
+        {/* Data polygon */}
+        <Polygon
+          points={dataPoints}
+          fill="rgba(200,0,255,0.35)"
+          stroke="#d400ff"
+          strokeWidth={bw(2)}
         />
 
-        {/* Text Labels */}
+        {/* Data dots */}
         {data.map((d, i) => {
-          const labelRadius = radius * 1.45; // Push text outside the circle
-          const x = center + labelRadius * Math.cos(angles[i]);
-          const y = center + labelRadius * Math.sin(angles[i]);
-          
+          const p = pt(R * (d.value / max), angles[i]);
           return (
-             <SvgText
-               key={i}
-               x={x}
-               y={y + 4} // adjust for vertical baseline
-               fill="#ffffff"
-               fontSize={normalize(11)}
-               fontWeight="bold"
-               textAnchor="middle"
-             >
-               {d.label}
-             </SvgText>
+            <Circle key={i} cx={p.x} cy={p.y} r={s(4)} fill="#d400ff" stroke="#fff" strokeWidth={bw(1)} />
+          );
+        })}
+
+        {/* Labels */}
+        {data.map((d, i) => {
+          const p = pt(labelR, angles[i]);
+          return (
+            <SvgText
+              key={i}
+              x={p.x}
+              y={p.y + s(4)}
+              fill="#b0c8f0"
+              fontSize={s(10)}
+              fontWeight="bold"
+              textAnchor="middle"
+            >
+              {d.label}
+            </SvgText>
           );
         })}
       </Svg>
+
+      {/* Value legend below chart */}
+      <View style={rcStyles.legend}>
+        {data.map((d, i) => (
+          <View key={i} style={rcStyles.legendItem}>
+            <View style={[rcStyles.legendDot, { backgroundColor: '#d400ff' }]} />
+            <Text style={rcStyles.legendLabel}>{d.label}</Text>
+            <Text style={rcStyles.legendVal}>{d.value}%</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 };
 
+const rcStyles = StyleSheet.create({
+  legend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: s(12),
+    gap: s(8),
+    paddingHorizontal: s(8),
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(4),
+    width: '30%',
+    minWidth: s(90),
+  },
+  legendDot: {
+    width: s(8),
+    height: s(8),
+    borderRadius: s(4),
+  },
+  legendLabel: {
+    color: '#8a9bc0',
+    fontSize: s(10),
+    flex: 1,
+  },
+  legendVal: {
+    color: '#d400ff',
+    fontSize: s(10),
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+});
+
+// ── Stat Pill ────────────────────────────────────────────────────────────────
+const StatPill = ({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) => (
+  <View style={[st.pill, { borderColor: color + '55' }]}>
+    <Text style={st.pillIcon}>{icon}</Text>
+    <Text style={[st.pillValue, { color }]}>{value}</Text>
+    <Text style={st.pillLabel}>{label}</Text>
+  </View>
+);
+
+const st = StyleSheet.create({
+  pill: {
+    flex: 1,
+    backgroundColor: '#0c1525',
+    borderWidth: bw(1.5),
+    borderRadius: s(12),
+    padding: s(12),
+    alignItems: 'center',
+    gap: s(4),
+  },
+  pillIcon: { fontSize: s(20) },
+  pillValue: { fontSize: s(18), fontWeight: 'bold' },
+  pillLabel: { color: '#5a7aaa', fontSize: s(10), textAlign: 'center' },
+});
+
+// ── Progress Bar ─────────────────────────────────────────────────────────────
+const Bar = ({ pct, color }: { pct: number; color: string }) => (
+  <View style={ps.barTrack}>
+    <View style={[ps.barFill, { width: `${Math.min(100, pct)}%`, backgroundColor: color }]} />
+  </View>
+);
+
+// ── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProgressScreen({ navigation }: any) {
-  // Data for the radar chart
-  const masteryData = [
-    { label: 'EMAIL', value: 88 },
-    { label: 'PRETEXT', value: 64 },
-    { label: 'SMS', value: 52 },
+  const masteryData: RadarEntry[] = [
+    { label: 'EMAIL',    value: 88 },
+    { label: 'PRETEXT',  value: 64 },
+    { label: 'SMS',      value: 52 },
     { label: 'PHYSICAL', value: 35 },
-    { label: 'OSINT', value: 21 },
-    { label: 'MALWARE', value: 75 },
+    { label: 'OSINT',    value: 21 },
+    { label: 'MALWARE',  value: 75 },
+  ];
+
+  const modules = [
+    { name: 'Phishing & Email Threats',      pct: 80, done: true  },
+    { name: 'Social Engineering Pretexting', pct: 45, done: false },
+    { name: 'SMS & Vishing Attacks',         pct: 20, done: false },
+    { name: 'Physical Security Breaches',    pct: 0,  done: false },
+    { name: 'OSINT & Reconnaissance',        pct: 0,  done: false },
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        
-        {/* === HEADER === */}
-        <View style={styles.topBarContainer}>
-          <View style={styles.leftHeader}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>PROGRESS</Text>
+    <SafeAreaView style={ps.safe}>
+      {/* ── HEADER ── */}
+      <View style={ps.header}>
+        <TouchableOpacity style={ps.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={ps.backBtnTxt}>←</Text>
+        </TouchableOpacity>
+        <Text style={ps.headerTitle}>PROGRESS</Text>
+        <View style={ps.headerRight}>
+          <View style={ps.resBadge}>
+            <Text style={ps.resBadgeIcon}>💀</Text>
+            <Text style={ps.resBadgeTxt}>2,400</Text>
           </View>
-
-          <View style={styles.topRightSection}>
-            <View style={styles.resourceItem}>
-              <Text style={styles.resourceIcon}>💀</Text>
-              <Text style={styles.resourceText}>2400</Text>
-            </View>
-            <View style={styles.resourceItem}>
-              <Text style={styles.resourceIcon}>🔧</Text>
-              <Text style={styles.resourceText}>1150</Text>
-            </View>
-            <TouchableOpacity style={styles.actionIconBtn}>
-              <Text style={styles.actionIcon}>✉️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionIconBtn}>
-              <Text style={styles.actionIcon}>⚙️</Text>
-            </TouchableOpacity>
+          <View style={ps.resBadge}>
+            <Text style={ps.resBadgeIcon}>🔧</Text>
+            <Text style={ps.resBadgeTxt}>1,150</Text>
           </View>
         </View>
+      </View>
 
-        <View style={styles.header}>
-           <Text style={styles.title}>Your Progress</Text>
-           <Text style={styles.subtitle}>Track your social engineering defense skills</Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={ps.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── PAGE TITLE ── */}
+        <Text style={ps.pageTitle}>Your Progress</Text>
+        <Text style={ps.pageSub}>Track your social engineering defense skills</Text>
+
+        {/* ── STAT PILLS ── */}
+        <View style={ps.pillRow}>
+          <StatPill icon="⚡" label="XP Earned"    value="3,240"  color="#ffcf5c" />
+          <StatPill icon="🎯" label="Accuracy"      value="74%"    color="#3fbf7f" />
+          <StatPill icon="🏆" label="Best Streak"   value="7"      color="#d400ff" />
         </View>
 
-        {/* === RANK CARD === */}
-        <View style={styles.card}>
-           <View style={styles.cardLeft}>
-              <View style={styles.bronzeBadge}>
-                 <Text style={styles.bronzeText}>B</Text>
+        {/* ── RANK CARD ── */}
+        <View style={ps.sectionCard}>
+          <Text style={ps.sectionLabel}>CURRENT RANK</Text>
+          <View style={ps.rankRow}>
+            {/* Medal */}
+            <View style={ps.medalWrap}>
+              <View style={ps.medal}>
+                <Text style={ps.medalText}>🥉</Text>
               </View>
-           </View>
-           <View style={styles.cardRight}>
-              <Text style={styles.cardLabel}>CURRENT RANK</Text>
-              <Text style={styles.rankName}>Bronze</Text>
-              <Text style={styles.rankSub}>260 pts to Silver</Text>
-              <View style={styles.barTrack}>
-                 <View style={[styles.barFill, { backgroundColor: '#e67e22', width: '60%' }]} />
+              <Text style={ps.medalName}>BRONZE</Text>
+            </View>
+
+            {/* Rank details */}
+            <View style={{ flex: 1 }}>
+              <View style={ps.rankMeta}>
+                <Text style={ps.rankMetaLabel}>3,240 XP</Text>
+                <Text style={ps.rankMetaLabel}>Silver at 3,500</Text>
               </View>
-           </View>
+              <Bar pct={74} color="#cd7f32" />
+              <Text style={ps.rankHint}>260 XP to Silver</Text>
+
+              {/* Tier row */}
+              <View style={ps.tierRow}>
+                {['B', 'S', 'G', 'P', 'D'].map((tier, i) => (
+                  <View key={tier} style={[ps.tierPip, i === 0 && ps.tierPipActive]}>
+                    <Text style={[ps.tierPipTxt, i === 0 && { color: '#cd7f32' }]}>{tier}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* === MODULE PROGRESS CARD === */}
-        <View style={styles.card}>
-           <View style={styles.cardFull}>
-              <Text style={styles.cardLabel}>MODULE 1 OF 5</Text>
-              <Text style={styles.moduleName}>Phishing & Email Threats</Text>
-              <Text style={styles.moduleSub}>2 tasks to Module 2</Text>
-              <View style={styles.barTrack}>
-                 <View style={[styles.barFill, { backgroundColor: '#00d2d3', width: '80%' }]} />
+        {/* ── MODULE PROGRESS ── */}
+        <View style={ps.sectionCard}>
+          <Text style={ps.sectionLabel}>MODULE PROGRESS</Text>
+          <Text style={ps.sectionTitle}>1 of 5 Modules Completed</Text>
+          {modules.map((m, i) => (
+            <View key={i} style={ps.moduleRow}>
+              <View style={[ps.moduleNum, m.done && ps.moduleNumDone]}>
+                <Text style={[ps.moduleNumTxt, m.done && { color: '#3fbf7f' }]}>
+                  {m.done ? '✓' : i + 1}
+                </Text>
               </View>
-           </View>
+              <View style={{ flex: 1 }}>
+                <View style={ps.moduleHeader}>
+                  <Text style={[ps.moduleName, !m.pct && { color: '#3a4a60' }]}>{m.name}</Text>
+                  <Text style={[ps.modulePct, { color: m.done ? '#3fbf7f' : m.pct ? '#5ac8ff' : '#3a4a60' }]}>
+                    {m.pct}%
+                  </Text>
+                </View>
+                <Bar
+                  pct={m.pct}
+                  color={m.done ? '#3fbf7f' : '#5ac8ff'}
+                />
+              </View>
+            </View>
+          ))}
         </View>
 
-        {/* === MASTERY BREAKDOWN (RADAR CHART) === */}
-        <View style={[styles.card, { alignItems: 'center' }]}>
-           <View style={styles.cardFull}>
-             <Text style={styles.cardLabel}>MASTERY BREAKDOWN</Text>
-             <Text style={styles.moduleName}>Threat Recognition Skills</Text>
-           </View>
-           <RadarChart data={masteryData} />
+        {/* ── MASTERY BREAKDOWN ── */}
+        <View style={ps.sectionCard}>
+          <Text style={ps.sectionLabel}>MASTERY BREAKDOWN</Text>
+          <Text style={ps.sectionTitle}>Threat Recognition Skills</Text>
+          <Text style={ps.sectionSub}>
+            Your strongest area is{' '}
+            <Text style={{ color: '#d400ff' }}>Email</Text> (88%) · Weakest is{' '}
+            <Text style={{ color: '#ff6363' }}>OSINT</Text> (21%)
+          </Text>
+          <RadarChart data={masteryData} />
+        </View>
+
+        {/* ── RECENT ACTIVITY ── */}
+        <View style={ps.sectionCard}>
+          <Text style={ps.sectionLabel}>RECENT ACTIVITY</Text>
+          {[
+            { icon: '✅', label: 'Stage 1 Cleared',         sub: 'Phishing & Email Threats',      pts: '+120 XP', color: '#3fbf7f' },
+            { icon: '🎯', label: 'Perfect Threat Analysis', sub: '10/10 correct answers',          pts: '+80 XP',  color: '#ffcf5c' },
+            { icon: '❌', label: 'Stage 2 Failed',          sub: 'Social Engineering Pretexting', pts: '+0 XP',   color: '#ff6363' },
+          ].map((a, i) => (
+            <View key={i} style={ps.activityRow}>
+              <Text style={ps.activityIcon}>{a.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={ps.activityLabel}>{a.label}</Text>
+                <Text style={ps.activitySub}>{a.sub}</Text>
+              </View>
+              <Text style={[ps.activityPts, { color: a.color }]}>{a.pts}</Text>
+            </View>
+          ))}
         </View>
 
       </ScrollView>
@@ -202,191 +361,250 @@ export default function ProgressScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
+// ── Styles ───────────────────────────────────────────────────────────────────
+const ps = StyleSheet.create({
+  safe: {
     flex: 1,
-    backgroundColor: '#0b141e', // Dark navy background
+    backgroundColor: '#080e1a',
   },
-  scrollContainer: {
-    padding: normalize(24),
-    paddingBottom: normalize(60), // Extra padding at bottom for scrolling
-  },
+
+  // Header
   header: {
-    marginBottom: normalize(20),
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0c1525',
+    borderBottomWidth: bw(1),
+    borderBottomColor: '#bda05e',
+    paddingHorizontal: s(16),
+    paddingVertical: s(10),
+    gap: s(12),
   },
   backBtn: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: normalize(12),
-    paddingVertical: normalize(8),
-    borderRadius: normalize(4),
-    marginBottom: normalize(16),
-  },
-  backBtnText: {
-    color: '#bdc3c7',
-    fontSize: normalize(12),
-    fontWeight: 'bold',
-  },
-  title: {
-    color: '#fff',
-    fontSize: normalize(28),
-    fontWeight: 'bold',
-    marginBottom: normalize(4),
-  },
-  subtitle: {
-    color: '#7f8c8d',
-    fontSize: normalize(12),
-  },
-  topBarContainer: {
-    height: normalize(48),
-    backgroundColor: 'rgba(5, 12, 24, 0.9)',
-    borderBottomWidth: bw(1),
-    borderTopWidth: bw(1),
-    borderColor: '#bda05e',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: normalize(16),
-    marginTop: normalize(20),
-  },
-  leftHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  backButton: {
-    width: normalize(38),
-    height: normalize(38),
-    borderRadius: normalize(19),
+    width: s(36),
+    height: s(36),
+    borderRadius: s(18),
     borderWidth: bw(2),
     borderColor: '#bda05e',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(10, 15, 25, 0.9)',
-    marginRight: normalize(12),
+    backgroundColor: 'rgba(10,15,25,0.9)',
   },
-  backButtonText: {
-    color: '#ffffff',
-    fontFamily: 'PixelFont',
-    fontSize: normalize(16),
+  backBtnTxt: {
+    color: '#fff',
+    fontSize: s(16),
+    lineHeight: s(20),
   },
   headerTitle: {
-    color: '#ffffff',
-    fontFamily: 'PixelFont',
-    fontSize: normalize(12),
+    color: '#fff',
+    fontSize: s(14),
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: s(8),
+  },
+  resBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: s(10),
+    paddingVertical: s(4),
+    borderRadius: s(12),
+    gap: s(4),
+  },
+  resBadgeIcon: { fontSize: s(12) },
+  resBadgeTxt:  { color: '#fff', fontSize: s(11), fontWeight: 'bold' },
+
+  // Scroll
+  scroll: {
+    padding: s(16),
+    paddingBottom: s(48),
+  },
+  pageTitle: {
+    color: '#fff',
+    fontSize: s(24),
+    fontWeight: 'bold',
+    marginBottom: s(4),
+    marginTop: s(4),
+  },
+  pageSub: {
+    color: '#5a7aaa',
+    fontSize: s(12),
+    marginBottom: s(20),
+  },
+
+  // Stat pills
+  pillRow: {
+    flexDirection: 'row',
+    gap: s(10),
+    marginBottom: s(16),
+  },
+
+  // Section cards
+  sectionCard: {
+    backgroundColor: '#0c1525',
+    borderWidth: bw(1.5),
+    borderColor: '#1e3050',
+    borderRadius: s(16),
+    padding: s(16),
+    marginBottom: s(16),
+  },
+  sectionLabel: {
+    color: '#3fbf7f',
+    fontSize: s(10),
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: s(4),
+  },
+  sectionTitle: {
+    color: '#fff',
+    fontSize: s(16),
+    fontWeight: 'bold',
+    marginBottom: s(4),
+  },
+  sectionSub: {
+    color: '#5a7aaa',
+    fontSize: s(12),
+    marginBottom: s(16),
+    lineHeight: s(18),
+  },
+
+  // Rank card
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(16),
+    marginTop: s(8),
+  },
+  medalWrap: {
+    alignItems: 'center',
+    gap: s(4),
+  },
+  medal: {
+    width: s(60),
+    height: s(60),
+    borderRadius: s(30),
+    borderWidth: bw(3),
+    borderColor: '#cd7f32',
+    backgroundColor: '#1a0f08',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  medalText: { fontSize: s(30) },
+  medalName: {
+    color: '#cd7f32',
+    fontSize: s(9),
+    fontWeight: 'bold',
     letterSpacing: 1,
   },
-  topRightSection: {
+  rankMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: s(6),
   },
-  resourceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    paddingHorizontal: normalize(10),
-    paddingVertical: normalize(4),
-    borderRadius: normalize(12),
-    marginLeft: normalize(12),
+  rankMetaLabel: {
+    color: '#5a7aaa',
+    fontSize: s(10),
   },
-  resourceIcon: {
-    fontSize: normalize(12),
-  },
-  resourceText: {
-    color: '#ffffff',
-    fontFamily: 'PixelFont',
-    fontSize: normalize(10),
-    marginLeft: normalize(6),
-  },
-  actionIconBtn: {
-    marginLeft: normalize(16),
-  },
-  actionIcon: {
-    fontSize: normalize(16),
-  },
-  
-  // === CARDS ===
-  card: {
-    backgroundColor: '#121f2d', 
-    borderRadius: normalize(8),
-    borderWidth: bw(1),
-    borderColor: '#1e2b3c',
-    padding: normalize(20),
-    marginBottom: normalize(16),
-    flexDirection: 'row',
-  },
-  cardLeft: {
-    marginRight: normalize(20),
-    justifyContent: 'center',
-  },
-  bronzeBadge: {
-    width: normalize(64),
-    height: normalize(64),
-    borderRadius: normalize(32),
-    borderWidth: bw(4),
-    borderColor: '#cd7f32',
-    backgroundColor: '#3d2b1f',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bronzeText: {
+  rankHint: {
     color: '#cd7f32',
-    fontSize: normalize(24),
-    fontWeight: 'bold',
+    fontSize: s(10),
+    marginTop: s(4),
+    marginBottom: s(10),
   },
-  cardRight: {
-    flex: 1,
+  tierRow: {
+    flexDirection: 'row',
+    gap: s(6),
+    marginTop: s(4),
+  },
+  tierPip: {
+    width: s(28),
+    height: s(28),
+    borderRadius: s(14),
+    borderWidth: bw(1.5),
+    borderColor: '#1e3050',
+    backgroundColor: '#080e1a',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  cardFull: {
-    flex: 1,
-    width: '100%',
+  tierPipActive: {
+    borderColor: '#cd7f32',
+    backgroundColor: '#1a0f08',
   },
-  cardLabel: {
-    color: '#3498db',
-    fontSize: normalize(10),
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    marginBottom: normalize(4),
-  },
-  rankName: {
-    color: '#e67e22', 
-    fontSize: normalize(22),
+  tierPipTxt: {
+    color: '#5a7aaa',
+    fontSize: s(10),
     fontWeight: 'bold',
-    marginBottom: normalize(2),
   },
-  rankSub: {
-    color: '#7f8c8d',
-    fontSize: normalize(10),
-    marginBottom: normalize(12),
+
+  // Module progress
+  moduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(12),
+    marginTop: s(12),
+  },
+  moduleNum: {
+    width: s(28),
+    height: s(28),
+    borderRadius: s(14),
+    borderWidth: bw(1.5),
+    borderColor: '#1e3050',
+    backgroundColor: '#080e1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moduleNumDone: {
+    borderColor: '#3fbf7f',
+    backgroundColor: '#0a2018',
+  },
+  moduleNumTxt: {
+    color: '#5a7aaa',
+    fontSize: s(10),
+    fontWeight: 'bold',
+  },
+  moduleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: s(4),
   },
   moduleName: {
-    color: '#fff',
-    fontSize: normalize(18),
+    color: '#e8f0ff',
+    fontSize: s(12),
+    flex: 1,
+    marginRight: s(8),
+  },
+  modulePct: {
+    fontSize: s(11),
     fontWeight: 'bold',
-    marginBottom: normalize(4),
   },
-  moduleSub: {
-    color: '#7f8c8d',
-    fontSize: normalize(10),
-    marginBottom: normalize(12),
-  },
+
+  // Bar
   barTrack: {
-    height: normalize(8),
-    backgroundColor: '#1e2b3c',
-    borderRadius: normalize(4),
-    width: '100%',
+    height: s(6),
+    backgroundColor: '#0f1e35',
+    borderRadius: s(3),
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: normalize(4),
+    borderRadius: s(3),
   },
 
-  radarContainer: {
-    marginTop: normalize(10),
+  // Activity
+  activityRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  }
+    gap: s(12),
+    paddingVertical: s(10),
+    borderTopWidth: bw(1),
+    borderTopColor: '#1e3050',
+  },
+  activityIcon: { fontSize: s(20) },
+  activityLabel: { color: '#e8f0ff', fontSize: s(13), fontWeight: 'bold' },
+  activitySub:   { color: '#5a7aaa', fontSize: s(11), marginTop: s(1) },
+  activityPts:   { fontWeight: 'bold', fontSize: s(12) },
 });

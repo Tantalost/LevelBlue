@@ -20,15 +20,9 @@ const bw = (size: number) => Math.max(1, normalize(size));
 const STAGE_NUMBERS = [1, 2, 3, 4, 5];
 const POST_TEST_STAGE = STAGE_NUMBERS[STAGE_NUMBERS.length - 1];
 
-// --- Wave / enemy config -----------------------------------------------
-// Every stage runs the same shape: 5 waves, 30 enemies total. The counts
-// ramp up wave-over-wave so the back half of a stage is harder than the
-// front half, but they always sum to ENEMIES_PER_STAGE.
-// Import these from GameScreen's wave spawner so the numbers stay in sync
-// with what's shown here.
 export const WAVES_PER_STAGE = 5;
 export const ENEMIES_PER_STAGE = 30;
-export const WAVE_ENEMY_COUNTS: number[] = [4, 5, 6, 7, 8]; // sums to 30
+export const WAVE_ENEMY_COUNTS: number[] = [4, 5, 6, 7, 8]; 
 
 export type BuildingKey = "tower" | "glade" | "forge";
 export type BuildingLevels = {
@@ -46,11 +40,8 @@ type StageSelectScreenProps = {
   buildingLevels: BuildingLevels;
   onUpgradeBuilding: (building: BuildingKey) => void;
   moduleName?: string;
-  // Highest stage number the player has unlocked so far. Stage 1 is always
-  // open; stage N (N>1) unlocks once stage N-1 has been beaten. The parent
-  // should own and persist this (e.g. in AsyncStorage or a game-state
-  // store) and increment it after a stage's wave-defense phase is cleared.
   highestUnlockedStage?: number;
+  materials: number;
 };
 
 const BUILDINGS: {
@@ -59,6 +50,7 @@ const BUILDINGS: {
   icon: string;
   color: string;
   buffLabel: (level: number) => string;
+  cost: number;
 }[] = [
     {
       key: "tower",
@@ -66,6 +58,7 @@ const BUILDINGS: {
       icon: "🏯",
       color: "#5ac8ff",
       buffLabel: (level) => `+${8 * level} DMG`,
+      cost: 25,
     },
     {
       key: "glade",
@@ -73,22 +66,19 @@ const BUILDINGS: {
       icon: "🌳",
       color: "#3fbf7f",
       buffLabel: (level) => `+${(0.5 * level).toFixed(1)} RANGE`,
+      cost: 25,
     },
     {
       key: "forge",
       name: "Arcane Forge",
       icon: "⚒️",
       color: "#7f6fff",
-      buffLabel: (level) => `-${200 * level}ms CD`,
+      buffLabel: (level) => `-${100 * level}ms CD`,
+      cost: 25,
     },
   ];
 
-// A handful of fixed, twinkling background stars — same technique as the
-// FloatingDot component on the intro screen, just simplified to plain
-// opacity pulses since these don't need to drift.
 const STAR_LAYOUT = Array.from({ length: 26 }, (_, i) => {
-  // Deterministic pseudo-scatter so the layout doesn't reshuffle on every
-  // re-render (this only runs once, at module load).
   const seed = i * 137.5;
   return {
     top: `${Math.round((seed % 100) * 0.55)}%`,
@@ -158,10 +148,9 @@ export default function StageSelectScreen({
   onUpgradeBuilding,
   moduleName = "Module 1: The Basics",
   highestUnlockedStage = 1,
+  materials = 0,
 }: StageSelectScreenProps) {
   const stars = useMemo(() => STAR_LAYOUT, []);
-
-  // NEW: State for tracking which stage the user wants to confirm
   const [selectedConfirmStage, setSelectedConfirmStage] = useState<number | null>(null);
 
   return (
@@ -172,14 +161,12 @@ export default function StageSelectScreen({
       supportedOrientations={["landscape", "landscape-left", "landscape-right"]}
     >
       <View style={styles.screen}>
-        {/* 1. RESTORED: The Stars Background */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {stars.map((star, index) => (
             <Star key={index} {...star} />
           ))}
         </View>
 
-        {/* 2. RESTORED: The Top Title Bar */}
         <View style={styles.topBar}>
           <Text style={styles.moduleTitle}>{moduleName}</Text>
           <Text style={styles.moduleSubtitle}>
@@ -188,16 +175,24 @@ export default function StageSelectScreen({
           <View style={styles.titleUnderline} />
         </View>
 
-        {/* 3. RESTORED: The Building Upgrades Row */}
+        {/* --- Materials Display (Top Left) --- */}
+        <View style={styles.materialsBox}>
+          <Text style={styles.materialsIcon}>🔧</Text>
+          <Text style={styles.materialsText}>{materials}</Text>
+        </View>
+
         <View style={styles.buildingRow}>
           {BUILDINGS.map((building) => {
             const level = buildingLevels[building.key];
+            const canAfford = materials >= building.cost;
             return (
               <TouchableOpacity
                 key={building.key}
-                style={styles.buildingNode}
+                style={[styles.buildingNode, !canAfford && styles.buildingNodeDisabled]}
                 activeOpacity={0.8}
-                onPress={() => onUpgradeBuilding(building.key)}
+                onPress={() => {
+                   if (canAfford) onUpgradeBuilding(building.key);
+                }}
               >
                 <View
                   style={[
@@ -219,7 +214,9 @@ export default function StageSelectScreen({
                 <Text style={[styles.buildingBuff, { color: building.color }]}>
                   {building.buffLabel(level)}
                 </Text>
-                <Text style={styles.buildingCost}>Tap to upgrade · 25g</Text>
+                <Text style={[styles.buildingCost, !canAfford && styles.costError]}>
+                  {building.cost} Materials
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -241,10 +238,8 @@ export default function StageSelectScreen({
                     isActive && styles.stageChipActive,
                     isLocked && styles.stageChipLocked,
                   ]}
-                  // The new confirmation trigger
                   onPress={() => setSelectedConfirmStage(stage)}
                 >
-                  {/* 4. RESTORED: The Chip Content (Numbers and Icons) */}
                   {isLocked ? (
                     <Text style={styles.stageChipLockIcon}>🔒</Text>
                   ) : isPostTest ? (
@@ -280,7 +275,6 @@ export default function StageSelectScreen({
         </TouchableOpacity>
       </View>
 
-      {/* NEW: Confirmation Modal */}
       <Modal
         visible={selectedConfirmStage !== null}
         transparent
@@ -351,6 +345,29 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
+  materialsBox: {
+    position: "absolute",
+    top: normalize(24),
+    left: normalize(24),
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderWidth: bw(2),
+    borderColor: "#e8d5b5",
+    borderRadius: normalize(8),
+    paddingVertical: normalize(6),
+    paddingHorizontal: normalize(12),
+    gap: normalize(8),
+  },
+  materialsIcon: {
+    fontSize: normalize(16),
+  },
+  materialsText: {
+    color: "#fff",
+    fontFamily: "PixelFont",
+    fontSize: normalize(14),
+  },
+
   buildingRow: {
     flex: 1,
     flexDirection: "row",
@@ -360,6 +377,9 @@ const styles = StyleSheet.create({
   },
   buildingNode: {
     alignItems: "center",
+  },
+  buildingNodeDisabled: {
+    opacity: 0.5,
   },
   buildingGlow: {
     width: normalize(84),
@@ -407,6 +427,9 @@ const styles = StyleSheet.create({
     color: "#8a86b0",
     fontFamily: "PixelFont",
     fontSize: normalize(8),
+  },
+  costError: {
+    color: "#ff6363",
   },
 
   groundBand: {
