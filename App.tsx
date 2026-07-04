@@ -12,6 +12,8 @@ import GameScreen from './src/screens/GameScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import IntelligenceScreen from './src/screens/IntelligenceScreen';
 import StoreScreen from './src/screens/StoreScreen';
+import LessonsScreen from './src/screens/LessonsScreen';
+import ModuleDetailScreen from './src/screens/ModuleDetailScreen';
 
 
 
@@ -51,6 +53,8 @@ export default function App() {
         <Stack.Screen name="Game" component={GameScreen} />
         <Stack.Screen name="Progress" component={ProgressScreen} />
         <Stack.Screen name="Intelligence" component={IntelligenceScreen} />
+        <Stack.Screen name="Lessons" component={LessonsScreen} />
+        <Stack.Screen name="ModuleDetail" component={ModuleDetailScreen} />
         <Stack.Screen name="Store" component={StoreScreen} />
       </Stack.Navigator>
     </NavigationContainer>

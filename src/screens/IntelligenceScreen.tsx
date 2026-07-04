@@ -61,7 +61,11 @@ export default function IntelligenceScreen({ navigation }: any) {
 
           <View style={styles.centerContent}>
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.optionCard} activeOpacity={0.9}>
+              <TouchableOpacity 
+                style={styles.optionCard} 
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('Lessons')}
+              >
                 <ImageBackground
                   source={require('../assets/dashboard.png')}
                   style={styles.cardBackground}
