@@ -20,6 +20,16 @@ const bw = (size: number) => Math.max(1, normalize(size));
 const STAGE_NUMBERS = [1, 2, 3, 4, 5];
 const POST_TEST_STAGE = STAGE_NUMBERS[STAGE_NUMBERS.length - 1];
 
+// --- Wave / enemy config -----------------------------------------------
+// Every stage runs the same shape: 5 waves, 30 enemies total. The counts
+// ramp up wave-over-wave so the back half of a stage is harder than the
+// front half, but they always sum to ENEMIES_PER_STAGE.
+// Import these from GameScreen's wave spawner so the numbers stay in sync
+// with what's shown here.
+export const WAVES_PER_STAGE = 5;
+export const ENEMIES_PER_STAGE = 30;
+export const WAVE_ENEMY_COUNTS: number[] = [4, 5, 6, 7, 8]; // sums to 30
+
 export type BuildingKey = "tower" | "glade" | "forge";
 export type BuildingLevels = {
   tower: number;
@@ -29,12 +39,18 @@ export type BuildingLevels = {
 
 type StageSelectScreenProps = {
   visible: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  navigation: any;
   currentStage: number;
   onSelectStage: (stage: number) => void;
   buildingLevels: BuildingLevels;
   onUpgradeBuilding: (building: BuildingKey) => void;
   moduleName?: string;
+  // Highest stage number the player has unlocked so far. Stage 1 is always
+  // open; stage N (N>1) unlocks once stage N-1 has been beaten. The parent
+  // should own and persist this (e.g. in AsyncStorage or a game-state
+  // store) and increment it after a stage's wave-defense phase is cleared.
+  highestUnlockedStage?: number;
 };
 
 const BUILDINGS: {
@@ -135,11 +151,13 @@ function Star({
 export default function StageSelectScreen({
   visible,
   onClose,
+  navigation,
   currentStage,
   onSelectStage,
   buildingLevels,
   onUpgradeBuilding,
   moduleName = "Module 1: The Basics",
+  highestUnlockedStage = 1,
 }: StageSelectScreenProps) {
   const stars = useMemo(() => STAR_LAYOUT, []);
 
@@ -163,6 +181,9 @@ export default function StageSelectScreen({
 
         <View style={styles.topBar}>
           <Text style={styles.moduleTitle}>{moduleName}</Text>
+          <Text style={styles.moduleSubtitle}>
+            {WAVES_PER_STAGE} WAVES · {ENEMIES_PER_STAGE} ENEMIES PER STAGE
+          </Text>
           <View style={styles.titleUnderline} />
         </View>
 
@@ -209,17 +230,25 @@ export default function StageSelectScreen({
             {STAGE_NUMBERS.map((stage) => {
               const isPostTest = stage === POST_TEST_STAGE;
               const isActive = currentStage === stage;
+              // Stage 1 is always open. Anything past the player's
+              // highest-unlocked stage is locked until the one before it
+              // is beaten.
+              const isLocked = stage > highestUnlockedStage;
               return (
                 <TouchableOpacity
                   key={stage}
+                  disabled={isLocked}
                   style={[
                     styles.stageChip,
                     isPostTest && styles.stageChipPostTest,
                     isActive && styles.stageChipActive,
+                    isLocked && styles.stageChipLocked,
                   ]}
                   onPress={() => onSelectStage(stage)}
                 >
-                  {isPostTest ? (
+                  {isLocked ? (
+                    <Text style={styles.stageChipLockIcon}>🔒</Text>
+                  ) : isPostTest ? (
                     <>
                       <Text style={styles.stageChipIcon}>🎓</Text>
                       <Text style={styles.stageChipMicroLabel}>TEST</Text>
@@ -240,8 +269,15 @@ export default function StageSelectScreen({
           </View>
         </View>
 
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>BACK</Text>
+        <TouchableOpacity
+          style={styles.homeButton}
+          onPress={() => {
+            onClose?.();
+            navigation.navigate("Dashboard");
+          }}
+        >
+          <Text style={styles.homeButtonIcon}>🏠</Text>
+          <Text style={styles.homeButtonText}>HOME</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -264,6 +300,13 @@ const styles = StyleSheet.create({
     textShadowColor: "#5ac8ff",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
+  },
+  moduleSubtitle: {
+    marginTop: normalize(4),
+    color: "#8a86b0",
+    fontFamily: "PixelFont",
+    fontSize: normalize(9),
+    letterSpacing: 1,
   },
   titleUnderline: {
     marginTop: normalize(8),
@@ -357,6 +400,15 @@ const styles = StyleSheet.create({
   stageChipActive: {
     backgroundColor: "#3fbf7f",
   },
+  stageChipLocked: {
+    borderColor: "#3a3a4a",
+    backgroundColor: "#15141f",
+    opacity: 0.55,
+  },
+  stageChipLockIcon: {
+    fontSize: normalize(16),
+    opacity: 0.8,
+  },
   stageChipText: {
     color: "#dff5e8",
     fontFamily: "PixelFont",
@@ -379,17 +431,23 @@ const styles = StyleSheet.create({
     marginTop: normalize(2),
   },
 
-  closeButton: {
+  homeButton: {
     position: "absolute",
     top: normalize(24),
     right: normalize(24),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: normalize(8),
     borderWidth: bw(2),
     borderColor: "#7f6fff",
     borderRadius: normalize(10),
     paddingVertical: normalize(10),
     paddingHorizontal: normalize(22),
   },
-  closeButtonText: {
+  homeButtonIcon: {
+    fontSize: normalize(14),
+  },
+  homeButtonText: {
     color: "#f3d9ff",
     fontFamily: "PixelFont",
     fontSize: normalize(12),
