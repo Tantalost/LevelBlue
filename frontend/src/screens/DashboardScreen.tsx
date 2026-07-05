@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   PixelRatio,
   useWindowDimensions,
   Modal,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import StageSelectScreen, { BuildingLevels } from './StageSelectScreen';
@@ -23,6 +24,26 @@ export default function DashboardScreen({ navigation }: any) {
 
   const [selectedMode, setSelectedMode] = useState<'SOLO' | 'PVP'>('SOLO');
   const [modeModalVisible, setModeModalVisible] = useState(false);
+  const soloScale = useRef(new Animated.Value(1)).current;
+  const pvpScale  = useRef(new Animated.Value(0.88)).current;
+
+  const selectMode = (mode: 'SOLO' | 'PVP') => {
+    setSelectedMode(mode);
+    Animated.parallel([
+      Animated.spring(soloScale, {
+        toValue: mode === 'SOLO' ? 1 : 0.88,
+        useNativeDriver: true,
+        speed: 18,
+        bounciness: 4,
+      }),
+      Animated.spring(pvpScale, {
+        toValue: mode === 'PVP' ? 1 : 0.88,
+        useNativeDriver: true,
+        speed: 18,
+        bounciness: 4,
+      }),
+    ]).start();
+  };
 
   const [stageSelectVisible, setStageSelectVisible] = useState(false);
   const [buildingLevels, setBuildingLevels] = useState<BuildingLevels>({
@@ -141,19 +162,31 @@ export default function DashboardScreen({ navigation }: any) {
                 <Text style={styles.modeText}>{selectedMode}</Text>
               </TouchableOpacity>
 
-              {/* DEPLOY BUTTON */}
+              {/* DEPLOY / DEFEND BUTTON — changes with selected mode */}
               <TouchableOpacity
-                style={styles.deployButtonOuter}
+                style={[
+                  styles.deployButtonOuter,
+                  selectedMode === 'PVP' && {
+                    backgroundColor: '#ff4466',
+                    shadowColor: '#ff2244',
+                  },
+                ]}
                 activeOpacity={0.85}
                 onPress={() => setStageSelectVisible(true)}
               >
                 <LinearGradient
-                  colors={['#ffe28a', '#ffa634', '#d94d10']}
+                  colors={
+                    selectedMode === 'PVP'
+                      ? ['#ff6688', '#cc1133', '#880022']
+                      : ['#ffe28a', '#ffa634', '#d94d10']
+                  }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                   style={styles.deployButtonInner}
                 >
-                  <Text style={styles.deployText}>DEPLOY</Text>
+                  <Text style={styles.deployText}>
+                    {selectedMode === 'PVP' ? 'DEFEND' : 'DEPLOY'}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -167,58 +200,129 @@ export default function DashboardScreen({ navigation }: any) {
         transparent
         animationType="fade"
         supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+        onRequestClose={() => setModeModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
+
+          {/* Title */}
           <Text style={styles.modalTitle}>SELECT GAME MODE</Text>
+          <Text style={styles.modalSubtitle}>Choose how you want to deploy</Text>
 
+          {/* Cards row */}
           <View style={styles.modeCardsContainer}>
-            {/* --- SOLO CARD --- */}
+
+            {/* ── SOLO CARD ── */}
             <TouchableOpacity
-              style={[
-                styles.modeCardOuter,
-                selectedMode === 'SOLO' ? styles.modeCardActive : styles.modeCardInactive
-              ]}
-              onPress={() => setSelectedMode('SOLO')}
-              activeOpacity={0.9}
+              onPress={() => selectMode('SOLO')}
+              activeOpacity={1}
             >
-              <ImageBackground
-                source={{ uri: 'https://via.placeholder.com/300x400/12243a/ffffff?text=Solo+Art' }}
-                style={styles.modeCardImage}
+              <Animated.View
+                style={[
+                  styles.modeCardOuter,
+                  selectedMode === 'SOLO' ? styles.modeCardActive : styles.modeCardInactive,
+                  { transform: [{ scale: soloScale }] },
+                ]}
               >
-                <View style={[styles.modeOverlay, selectedMode === 'SOLO' ? styles.overlayActive : styles.overlayInactive]}>
-                  <Text style={styles.modeCardBigIcon}>⚔️</Text>
-                  <Text style={styles.modeCardBigText}>SOLO</Text>
-                </View>
-              </ImageBackground>
+                {/* Dark tint for inactive */}
+                {selectedMode !== 'SOLO' && <View style={styles.cardDarkOverlay} />}
+
+                {/* Colored background */}
+                <LinearGradient
+                  colors={['#0a2a4a', '#0d3d6e', '#1a5fa0']}
+                  style={styles.cardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0.6, y: 1 }}
+                >
+                  {/* Top label */}
+                  <View style={styles.cardTopLabel}>
+                    <Text style={styles.cardTopLabelTxt}>SINGLE PLAYER</Text>
+                  </View>
+
+                  {/* Big icon */}
+                  <Text style={styles.cardBigIcon}>🛡️</Text>
+
+                  {/* Bottom content */}
+                  <View style={[
+                    styles.cardBottom,
+                    selectedMode === 'SOLO' && styles.cardBottomActive,
+                  ]}>
+                    <Text style={styles.cardBottomTitle}>SOLO</Text>
+                    <Text style={styles.cardBottomSub}>Module-based campaign</Text>
+                    {selectedMode === 'SOLO' && (
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedBadgeTxt}>▶ SELECTED</Text>
+                      </View>
+                    )}
+                  </View>
+                </LinearGradient>
+              </Animated.View>
             </TouchableOpacity>
 
-            {/* --- PVP CARD --- */}
+            {/* ── PVP CARD ── */}
             <TouchableOpacity
-              style={[
-                styles.modeCardOuter,
-                selectedMode === 'PVP' ? styles.modeCardActive : styles.modeCardInactive
-              ]}
-              onPress={() => setSelectedMode('PVP')}
-              activeOpacity={0.9}
+              onPress={() => selectMode('PVP')}
+              activeOpacity={1}
             >
-              <ImageBackground
-                source={{ uri: 'https://via.placeholder.com/300x400/3a121d/ffffff?text=PVP+Art' }}
-                style={styles.modeCardImage}
+              <Animated.View
+                style={[
+                  styles.modeCardOuter,
+                  selectedMode === 'PVP' ? styles.modeCardActive : styles.modeCardInactive,
+                  { transform: [{ scale: pvpScale }] },
+                  selectedMode === 'PVP' && { shadowColor: '#ff4466' },
+                ]}
               >
-                <View style={[styles.modeOverlay, selectedMode === 'PVP' ? styles.overlayActive : styles.overlayInactive]}>
-                  <Text style={styles.modeCardBigIcon}>🛡️</Text>
-                  <Text style={styles.modeCardBigText}>PVP</Text>
-                </View>
-              </ImageBackground>
+                {selectedMode !== 'PVP' && <View style={styles.cardDarkOverlay} />}
+
+                <LinearGradient
+                  colors={['#3a0a1a', '#6e1030', '#a01a45']}
+                  style={styles.cardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0.6, y: 1 }}
+                >
+                  <View style={styles.cardTopLabel}>
+                    <Text style={styles.cardTopLabelTxt}>MULTIPLAYER</Text>
+                  </View>
+
+                  <Text style={styles.cardBigIcon}>⚔️</Text>
+
+                  <View style={[
+                    styles.cardBottom,
+                    selectedMode === 'PVP' && styles.cardBottomActivePvp,
+                  ]}>
+                    <Text style={styles.cardBottomTitle}>PVP</Text>
+                    <Text style={styles.cardBottomSub}>Player vs player battles</Text>
+                    {selectedMode === 'PVP' && (
+                      <View style={[styles.selectedBadge, { backgroundColor: '#ff4466' }]}>
+                        <Text style={styles.selectedBadgeTxt}>▶ SELECTED</Text>
+                      </View>
+                    )}
+                  </View>
+                </LinearGradient>
+              </Animated.View>
             </TouchableOpacity>
+
           </View>
 
-          {/* CONFIRM BUTTON */}
-          <TouchableOpacity style={styles.confirmButton} onPress={() => setModeModalVisible(false)} activeOpacity={0.8}>
-            <Text style={styles.confirmButtonText}>CONFIRM</Text>
+          {/* Confirm button */}
+          <TouchableOpacity
+            style={[
+              styles.confirmButton,
+              selectedMode === 'PVP' && { backgroundColor: '#ff4466', borderColor: '#ff8899' },
+            ]}
+            onPress={() => setModeModalVisible(false)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.confirmButtonText}>CONFIRM  {selectedMode === 'SOLO' ? '🛡️' : '⚔️'}</Text>
           </TouchableOpacity>
+
+          {/* Close hint */}
+          <TouchableOpacity onPress={() => setModeModalVisible(false)} style={styles.closeHintBtn}>
+            <Text style={styles.closeHint}>✕  CANCEL</Text>
+          </TouchableOpacity>
+
         </View>
       </Modal>
+
       <StageSelectScreen
         visible={stageSelectVisible}
         onClose={() => setStageSelectVisible(false)}
@@ -474,81 +578,158 @@ function makeStyles(width: number) {
     // === MODAL STYLES ===
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.85)',
+      backgroundColor: 'rgba(0,0,0,0.88)',
       justifyContent: 'center',
       alignItems: 'center',
+      paddingHorizontal: normalize(20),
     },
     modalTitle: {
-      color: '#ffd23f',
+      color: '#ffffff',
       fontFamily: 'PixelFont',
-      fontSize: normalize(24),
-      marginBottom: normalize(32),
+      fontSize: normalize(20),
+      marginBottom: normalize(6),
+      letterSpacing: 3,
       textShadowColor: '#000',
       textShadowOffset: { width: 1, height: 1 },
-      textShadowRadius: 2,
-      letterSpacing: 2,
+      textShadowRadius: 4,
+    },
+    modalSubtitle: {
+      color: '#5a7aaa',
+      fontSize: normalize(10),
+      letterSpacing: 1,
+      marginBottom: normalize(28),
+      fontFamily: 'PixelFont',
     },
     modeCardsContainer: {
       flexDirection: 'row',
-      gap: normalize(32),
+      gap: normalize(20),
+      alignItems: 'center',
     },
     modeCardOuter: {
-      width: normalize(220),
-      height: normalize(320),
-      borderRadius: normalize(12),
+      width: normalize(200),
+      height: normalize(300),
+      borderRadius: normalize(16),
       overflow: 'hidden',
       borderWidth: bw(3),
-      backgroundColor: '#0a1520',
+      // Glow effect
+      shadowOpacity: 0.9,
+      shadowRadius: normalize(20),
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 12,
     },
     modeCardActive: {
       borderColor: '#ffd23f',
-      transform: [{ scale: 1.05 }],
+      shadowColor: '#ffd23f',
     },
     modeCardInactive: {
       borderColor: '#1a252f',
-      transform: [{ scale: 0.95 }],
+      shadowColor: '#000',
     },
-    modeCardImage: {
-      width: '100%',
-      height: '100%',
+    cardDarkOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.62)',
+      zIndex: 10,
+      borderRadius: normalize(14),
     },
-    modeOverlay: {
+    cardGradient: {
       flex: 1,
-      justifyContent: 'center',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: normalize(14),
+      paddingBottom: 0,
     },
-    overlayActive: {
-      backgroundColor: 'rgba(0,0,0,0.1)',
+    cardTopLabel: {
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(4),
     },
-    overlayInactive: {
-      backgroundColor: 'rgba(0,0,0,0.75)',
+    cardTopLabelTxt: {
+      color: 'rgba(255,255,255,0.7)',
+      fontSize: normalize(8),
+      fontFamily: 'PixelFont',
+      letterSpacing: 2,
     },
-    modeCardBigIcon: {
-      fontSize: normalize(48),
-      marginBottom: normalize(12),
+    cardBigIcon: {
+      fontSize: normalize(52),
+      marginVertical: normalize(8),
     },
-    modeCardBigText: {
+    cardBottom: {
+      width: '100%',
+      alignItems: 'center',
+      paddingVertical: normalize(16),
+      paddingHorizontal: normalize(12),
+      backgroundColor: 'rgba(0,0,0,0.50)',
+      gap: normalize(4),
+    },
+    cardBottomActive: {
+      backgroundColor: 'rgba(255,210,63,0.18)',
+      borderTopWidth: bw(2),
+      borderTopColor: '#ffd23f',
+    },
+    cardBottomActivePvp: {
+      backgroundColor: 'rgba(255,68,102,0.18)',
+      borderTopWidth: bw(2),
+      borderTopColor: '#ff4466',
+    },
+    cardBottomTitle: {
       color: '#ffffff',
       fontFamily: 'PixelFont',
-      fontSize: normalize(28),
+      fontSize: normalize(22),
+      letterSpacing: 2,
       textShadowColor: '#000',
       textShadowOffset: { width: 1, height: 1 },
       textShadowRadius: 2,
     },
+    cardBottomSub: {
+      color: 'rgba(255,255,255,0.6)',
+      fontSize: normalize(8),
+      fontFamily: 'PixelFont',
+      letterSpacing: 0.5,
+      textAlign: 'center',
+    },
+    selectedBadge: {
+      marginTop: normalize(8),
+      backgroundColor: '#ffd23f',
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(4),
+    },
+    selectedBadgeTxt: {
+      color: '#050a15',
+      fontFamily: 'PixelFont',
+      fontSize: normalize(9),
+      letterSpacing: 1,
+    },
     confirmButton: {
-      marginTop: normalize(48),
+      marginTop: normalize(28),
       backgroundColor: '#ffd23f',
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(48),
       borderRadius: normalize(28),
       borderWidth: bw(2),
-      borderColor: '#fff',
+      borderColor: '#fff8d0',
+      shadowColor: '#ffd23f',
+      shadowOpacity: 0.8,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 10,
     },
     confirmButtonText: {
       color: '#050a15',
       fontFamily: 'PixelFont',
-      fontSize: normalize(18),
+      fontSize: normalize(14),
       fontWeight: 'bold',
+      letterSpacing: 1,
+    },
+    closeHintBtn: {
+      marginTop: 16,
+    },
+    closeHint: {
+      color: '#3a4a60',
+      fontFamily: 'PixelFont',
+      fontSize: normalize(9),
+      letterSpacing: 2,
     },
   });
 }
