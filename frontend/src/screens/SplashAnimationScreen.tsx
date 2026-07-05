@@ -11,6 +11,9 @@ import {
   Dimensions,
   PixelRatio,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '../store/useAuthStore';
 
 const STUDIO_HOLD_MS = 1400;
 const LOADING_DURATION_MS = 22000;
@@ -66,7 +69,24 @@ export default function SplashAnimationScreen({ navigation }: any) {
       duration: LOADING_DURATION_MS,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false, // width interpolation can't use native driver
-    }).start(() => {
+    }).start(async () => {
+      try {
+        let token;
+        if (Platform.OS === 'web') {
+          token = await AsyncStorage.getItem('userToken');
+        } else {
+          token = await SecureStore.getItemAsync('userToken');
+        }
+        const userStr = await AsyncStorage.getItem('userData');
+        if (token && userStr) {
+          const user = JSON.parse(userStr);
+          useAuthStore.getState().setAuth(user, token);
+          navigation.replace('Dashboard');
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
       navigation.replace('Intro');
     });
   }, [phase, gameFade, progress, navigation]);

@@ -54,13 +54,17 @@ export default function ForcePasswordChangeScreen({ navigation }: Props) {
       const { data: authData, error: userError } = await supabase.auth.getUser();
       if (userError || !authData.user) throw new Error('Could not verify user session.');
 
-      // 4. Update the public.students table to clear the flag
-      const { error: dbError } = await supabase
-        .from('students')
-        .update({ requires_password_change: false })
-        .eq('id', authData.user.id);
+      // 4. Update the public.students table to clear the flag via backend API
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      const response = await fetch(`${apiUrl}/students/${authData.user.id}/password-flag`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requires_password_change: false }),
+      });
 
-      if (dbError) throw dbError;
+      if (!response.ok) throw new Error('Failed to update profile flag via API');
 
       // 5. Success! Route them to the Dashboard
       navigation.reset({
