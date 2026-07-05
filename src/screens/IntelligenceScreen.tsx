@@ -78,7 +78,7 @@ export default function IntelligenceScreen({ navigation }: any) {
                 </ImageBackground>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.optionCard} activeOpacity={0.9}>
+              <TouchableOpacity style={styles.optionCard} activeOpacity={0.9} onPress={() => navigation.navigate('Codex')}>
                 <ImageBackground
                   source={require('../assets/dashboard.png')}
                   style={styles.cardBackground}
