@@ -12,9 +12,25 @@ import {
   TouchableOpacity,
   ActivityIndicator
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { supabase } from '../utils/supabase';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '../store/useAuthStore';
 import { LevelBlueButton } from './LevelBlueButton';
+
+function PatternItem({ met, text }: { met: boolean; text: string }) {
+  return (
+    <View style={styles.patternRow}>
+      <Ionicons
+        name={met ? "checkmark-circle" : "ellipse-outline"}
+        size={14}
+        color={met ? "#4CAF50" : "#7ab8d4"}
+      />
+      <Text style={[styles.patternText, { color: met ? "#4CAF50" : "#7ab8d4" }]}>{text}</Text>
+    </View>
+  );
+}
 
 // 1. ADDED 'navigation' to Props so we can intercept the route
 type Props = {
@@ -33,6 +49,23 @@ export function LoginScreen({ onLogin, navigation }: Props) {
   const [mfaCode, setMfaCode] = useState('');
   const [mfaError, setMfaError] = useState('');
 
+  // === Password Change States ===
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const passwordPatterns = {
+    length: newPassword.length >= 8,
+    uppercase: /[A-Z]/.test(newPassword),
+    lowercase: /[a-z]/.test(newPassword),
+    number: /[0-9]/.test(newPassword),
+    special: /[^A-Za-z0-9]/.test(newPassword),
+  };
+  const isPasswordStrong = Object.values(passwordPatterns).every(Boolean);
+
   // === STEP 1: AUTHENTICATE ===
   async function submit() {
     if (!email || !password) {
@@ -43,21 +76,41 @@ export function LoginScreen({ onLogin, navigation }: Props) {
     setError('');
     setIsLoading(true);
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password,
-    });
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      const response = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password })
+      });
+      const data = await response.json();
+      
+      setIsLoading(false);
 
-    setIsLoading(false);
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
+        return;
+      }
 
-    // CRITICAL: Handle the error BEFORE querying the database
-    if (signInError) {
-      setError(signInError.message);
-      return;
+      if (data.mfaRequired) {
+        setMfaVisible(true);
+      } else if (data.token && data.user) {
+        // Normal login without MFA (requires_password_change is false)
+        if (Platform.OS === 'web') {
+          await AsyncStorage.setItem('userToken', data.token);
+        } else {
+          await SecureStore.setItemAsync('userToken', data.token);
+        }
+        await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+        useAuthStore.getState().setAuth(data.user, data.token);
+        onLogin();
+      } else {
+        setError('Unexpected response from server');
+      }
+    } catch (e: any) {
+      setIsLoading(false);
+      setError(e.message || 'Network error');
     }
-
-    // Auth Successful! Trigger the thematic MFA Modal FIRST.
-    setMfaVisible(true);
   }
 
   // === STEP 2: VERIFY MFA AND CHECK FLAG ===
@@ -66,32 +119,88 @@ export function LoginScreen({ onLogin, navigation }: Props) {
       setMfaError('');
       setMfaVisible(false);
 
-      // 1. Fetch the user we just logged in
-      const { data: authData } = await supabase.auth.getUser();
-      
-      if (!authData.user) return;
-
-      // 2. Fetch their specific database flag
-      const { data: studentProfile, error: profileError } = await supabase
-        .from('students')
-        .select('requires_password_change')
-        .eq('id', authData.user.id)
-        .single();
-
-      // 3. Intercept the routing!
-      if (studentProfile?.requires_password_change === true) {
-        // Send them to the Force Change Screen
-        navigation?.reset({
-          index: 0,
-          routes: [{ name: 'ForcePasswordChange' }],
+      try {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+        
+        // 1. Verify the MFA code
+        const response = await fetch(`${apiUrl}/auth/verify-mfa`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), code: mfaCode })
         });
-      } else {
-        // Normal login, triggers the App.tsx routing to Dashboard
-        onLogin(); 
-      }
+        const data = await response.json();
 
+        if (!response.ok) {
+          setMfaError(data.error || 'Invalid verification code');
+          return;
+        }
+
+        // MFA Success!
+        setMfaVisible(false);
+        const { token, user } = data;
+
+        // Save to storage
+        if (Platform.OS === 'web') {
+          await AsyncStorage.setItem('userToken', token);
+        } else {
+          await SecureStore.setItemAsync('userToken', token);
+        }
+        await AsyncStorage.setItem('userData', JSON.stringify(user));
+        useAuthStore.getState().setAuth(user, token);
+
+        // Since MFA is only triggered on first login, prompt for new password
+        setPasswordModalVisible(true);
+
+      } catch (e: any) {
+        setMfaError(e.message || 'Network error');
+      }
     } else {
       setMfaError('Code must be 6 digits.');
+    }
+  }
+
+  // === STEP 3: CHANGE PASSWORD (FIRST TIME ONLY) ===
+  async function changePassword() {
+    if (!newPassword || !confirmPassword) {
+      setPasswordError('Please fill out both fields.');
+      return;
+    }
+    if (!isPasswordStrong) {
+      setPasswordError('Password does not meet all requirements.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    setPasswordError('');
+    setIsLoading(true);
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      const token = useAuthStore.getState().token;
+      
+      const response = await fetch(`${apiUrl}/auth/change-password`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update password');
+      }
+
+      // Success!
+      setPasswordModalVisible(false);
+      onLogin();
+
+    } catch (e: any) {
+      setPasswordError(e.message || 'Error updating password');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -224,12 +333,101 @@ export function LoginScreen({ onLogin, navigation }: Props) {
                       setMfaVisible(false);
                       setMfaCode(''); 
                       setMfaError('');
-                      supabase.auth.signOut();
                     }}
                   >
                     <Text style={styles.cancelText}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Change Password Modal ── */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent
+        animationType="fade"
+        supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.mfaCard}>
+
+              <View style={[styles.mfaHeader, { backgroundColor: '#3d0f0f', borderBottomColor: '#c0392b' }]}>
+                <Text style={[styles.logo, { fontSize: 22, lineHeight: 26, color: '#fff' }]}>Security Alert</Text>
+                <Text style={[styles.tagline, { color: '#ffb3ae' }]}>Update Temporary Password</Text>
+              </View>
+
+              <View style={styles.mfaBody}>
+                <View style={styles.field}>
+                  <Text style={[styles.label, { marginBottom: 6 }]}>New Password</Text>
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      secureTextEntry={!showNewPassword}
+                      placeholder="Enter new password"
+                      placeholderTextColor="#7ab8d4"
+                      editable={!isLoading}
+                    />
+                    <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeIcon}>
+                      <Ionicons name={showNewPassword ? "eye-off" : "eye"} size={20} color="#7ab8d4" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Password Pattern UI */}
+                <View style={styles.patternContainer}>
+                  <PatternItem met={passwordPatterns.length} text="At least 8 characters" />
+                  <PatternItem met={passwordPatterns.uppercase} text="One uppercase letter" />
+                  <PatternItem met={passwordPatterns.lowercase} text="One lowercase letter" />
+                  <PatternItem met={passwordPatterns.number} text="One number" />
+                  <PatternItem met={passwordPatterns.special} text="One special character" />
+                </View>
+
+                <View style={[styles.field, { marginTop: 8 }]}>
+                  <Text style={[styles.label, { marginBottom: 6 }]}>Confirm Password</Text>
+                  <View style={styles.passwordInputContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirmPassword}
+                      placeholder="Re-type new password"
+                      placeholderTextColor="#7ab8d4"
+                      editable={!isLoading}
+                    />
+                    <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+                      <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={20} color="#7ab8d4" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {passwordError ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>⚠  {passwordError}</Text>
+                  </View>
+                ) : null}
+
+                <View style={{ marginTop: 10 }}>
+                  {isLoading ? (
+                    <ActivityIndicator size="large" color="#F2B94B" />
+                  ) : (
+                    <LevelBlueButton label="▶  Secure Account" onPress={changePassword} />
+                  )}
+                </View>
+
               </View>
 
             </View>
@@ -455,5 +653,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
+  },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#0a1520',
+    backgroundColor: '#F4F1E9',
+    shadowColor: '#0a1520',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 3,
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 12,
+    color: '#1B2430',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  eyeIcon: {
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+  },
+  patternContainer: {
+    marginTop: 8,
+    gap: 4,
+  },
+  patternRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  patternText: {
+    fontSize: 12,
+    fontWeight: '600',
   }
 });
