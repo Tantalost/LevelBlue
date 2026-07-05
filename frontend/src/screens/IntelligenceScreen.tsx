@@ -132,19 +132,12 @@ export default function IntelligenceScreen({ navigation }: any) {
               <Text style={is.resourceIcon}>🔧</Text>
               <Text style={is.resourceText}>1150</Text>
             </View>
-            <TouchableOpacity style={is.actionIconBtn}>
-              <Text style={is.actionIcon}>✉️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={is.actionIconBtn}>
-              <Text style={is.actionIcon}>⚙️</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
         {/* ── PAGE HEADING ── */}
         <View style={is.heading}>
           <Text style={is.headingTitle}>INTEL HUB</Text>
-          <Text style={is.headingSubtitle}>Choose your intelligence channel</Text>
           {/* Decorative divider */}
           <View style={is.divider}>
             <View style={is.dividerLine} />
@@ -163,12 +156,6 @@ export default function IntelligenceScreen({ navigation }: any) {
             />
           ))}
         </View>
-
-        {/* ── FOOTER HINT ── */}
-        <View style={is.footer}>
-          <Text style={is.footerTxt}>◆  LEVEL BLUE — INTELLIGENCE DIVISION  ◆</Text>
-        </View>
-
       </SafeAreaView>
     </View>
   );

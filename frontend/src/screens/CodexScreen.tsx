@@ -620,13 +620,6 @@ export default function CodexScreen({ navigation }: any) {
         <View style={cs.flank}><Text style={cs.flankTxt}>─ ─ ◆</Text></View>
       </View>
 
-      {/* ── SUBTITLE ── */}
-      <Text style={cs.subtitle}>
-        {tab === 'UNITS'
-          ? `${UNITS.length} deployable units · tap a card for full intel`
-          : `${ENEMIES.length} known threats · know your enemy`}
-      </Text>
-
       {/* ── GRID ── */}
       <Animated.View style={[{ flex: 1 }, { transform: [{ translateX: slideAnim }] }]}>
         <ScrollView

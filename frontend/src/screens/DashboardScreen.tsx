@@ -67,7 +67,7 @@ export default function DashboardScreen({ navigation }: any) {
             <View style={styles.profileContainer}>
               <View style={styles.avatarBox}>
                 <Image
-                  source={require('../assets/logo.png')}
+                  source={require('../assets/tempo_pfp.jpg')}
                   style={styles.avatarImage}
                   resizeMode="contain"
                 />
