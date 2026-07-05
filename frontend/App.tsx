@@ -15,6 +15,9 @@ import StoreScreen from './src/screens/StoreScreen';
 import LessonsScreen from './src/screens/LessonsScreen';
 import ModuleDetailScreen from './src/screens/ModuleDetailScreen';
 import CodexScreen from './src/screens/CodexScreen';
+import PvPHubScreen from './src/screens/PvPHubScreen';
+import PayloadForgeScreen from './src/screens/PayloadForgeScreen';
+import InboxTriageScreen from './src/screens/InboxTriageScreen';
 
 
 
@@ -57,6 +60,9 @@ export default function App() {
         <Stack.Screen name="Lessons" component={LessonsScreen} />
         <Stack.Screen name="ModuleDetail" component={ModuleDetailScreen} />
         <Stack.Screen name="Codex" component={CodexScreen} />
+        <Stack.Screen name="PvPHub" component={PvPHubScreen} />
+        <Stack.Screen name="PayloadForge" component={PayloadForgeScreen} />
+        <Stack.Screen name="InboxTriage" component={InboxTriageScreen} />
         <Stack.Screen name="Store" component={StoreScreen} />
       </Stack.Navigator>
     </NavigationContainer>

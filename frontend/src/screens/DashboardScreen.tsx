@@ -172,7 +172,13 @@ export default function DashboardScreen({ navigation }: any) {
                   },
                 ]}
                 activeOpacity={0.85}
-                onPress={() => setStageSelectVisible(true)}
+                onPress={() => {
+                  if (selectedMode === 'PVP') {
+                    navigation.navigate('PvPHub');
+                  } else {
+                    setStageSelectVisible(true);
+                  }
+                }}
               >
                 <LinearGradient
                   colors={
