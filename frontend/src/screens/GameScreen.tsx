@@ -408,55 +408,55 @@ function ResultsScreen({
     <View style={resStyles.root}>
       <StatusBar hidden />
       <SafeAreaView style={resStyles.safe}>
-        <Text style={resStyles.title}>ANALYSIS COMPLETE</Text>
-        <Text style={resStyles.subtitle}>Threat Intelligence Report</Text>
+        <ScrollView
+          contentContainerStyle={resStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={resStyles.title}>ANALYSIS COMPLETE</Text>
+          <View style={[resStyles.gradeBadge, { borderColor: tierColor, shadowColor: tierColor }]}>
+            <Text style={[resStyles.gradeText, { color: tierColor }]}>{bonusTier}</Text>
+            <Text style={resStyles.gradeScore}>{correctCount} / {QUESTIONS.length}</Text>
+          </View>
 
-        {/* Score badge */}
-        <View style={[resStyles.gradeBadge, { borderColor: tierColor, shadowColor: tierColor }]}>
-          <Text style={[resStyles.gradeText, { color: tierColor }]}>{bonusTier}</Text>
-          <Text style={resStyles.gradeScore}>{correctCount} / {QUESTIONS.length}</Text>
-        </View>
+          <View style={resStyles.rewardsCard}>
+            <Text style={resStyles.rewardsTitle}>DEPLOYMENT REWARDS</Text>
 
-        {/* Rewards */}
-        <View style={resStyles.rewardsCard}>
-          <Text style={resStyles.rewardsTitle}>DEPLOYMENT REWARDS</Text>
-
-          <View style={resStyles.rewardRow}>
-            <Text style={resStyles.rewardIcon}>🪙</Text>
-            <View style={resStyles.rewardInfo}>
-              <Text style={resStyles.rewardLabel}>Starting Gold Bonus</Text>
-              <Text style={resStyles.rewardValue}>+{totalGold} Gold</Text>
+            <View style={resStyles.rewardRow}>
+              <Text style={resStyles.rewardIcon}>🪙</Text>
+              <View style={resStyles.rewardInfo}>
+                <Text style={resStyles.rewardLabel}>Starting Gold Bonus</Text>
+                <Text style={resStyles.rewardValue}>+{totalGold} Gold</Text>
+              </View>
+              <View style={[resStyles.rewardBadge, { backgroundColor: "#2a1800" }]}>
+                <Text style={[resStyles.rewardBadgeText, { color: "#ffcf5c" }]}>{correctCount} ✓</Text>
+              </View>
             </View>
-            <View style={[resStyles.rewardBadge, { backgroundColor: "#2a1800" }]}>
-              <Text style={[resStyles.rewardBadgeText, { color: "#ffcf5c" }]}>{correctCount} ✓</Text>
+
+            <View style={resStyles.divider} />
+
+            <View style={resStyles.rewardRow}>
+              <Text style={resStyles.rewardIcon}>🔧</Text>
+              <View style={resStyles.rewardInfo}>
+                <Text style={resStyles.rewardLabel}>Base Materials</Text>
+                <Text style={resStyles.rewardValue}>+0 Materials</Text>
+              </View>
+              <View style={[resStyles.rewardBadge, { backgroundColor: "#0a1a12" }]}>
+                <Text style={[resStyles.rewardBadgeText, { color: "#3fbf7f" }]}>Win Stage</Text>
+              </View>
             </View>
           </View>
 
-          <View style={resStyles.divider} />
-
-          <View style={resStyles.rewardRow}>
-            <Text style={resStyles.rewardIcon}>🔧</Text>
-            <View style={resStyles.rewardInfo}>
-              <Text style={resStyles.rewardLabel}>Base Materials</Text>
-              <Text style={resStyles.rewardValue}>+0 Materials</Text>
-            </View>
-            <View style={[resStyles.rewardBadge, { backgroundColor: "#0a1a12" }]}>
-              <Text style={[resStyles.rewardBadgeText, { color: "#3fbf7f" }]}>Win Stage</Text>
-            </View>
+          <View style={resStyles.tipBox}>
+            <Text style={resStyles.tipIcon}>⚡</Text>
+            <Text style={resStyles.tipText}>
+              You earned <Text style={{ color: "#ffcf5c", fontFamily: "PixelFont" }}>{totalGold}g</Text> to deploy towers. Place them wisely — passive kill gold alone won't stop the breach.
+            </Text>
           </View>
-        </View>
 
-        {/* Strategy tip */}
-        <View style={resStyles.tipBox}>
-          <Text style={resStyles.tipIcon}>⚡</Text>
-          <Text style={resStyles.tipText}>
-            You earned <Text style={{ color: "#ffcf5c", fontFamily: "PixelFont" }}>{totalGold}g</Text> to deploy towers. Place them wisely — passive kill gold alone won't stop the breach.
-          </Text>
-        </View>
-
-        <TouchableOpacity style={resStyles.continueBtn} onPress={onContinue} activeOpacity={0.85}>
-          <Text style={resStyles.continueBtnText}>BEGIN BREACH  ▶</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={resStyles.continueBtn} onPress={onContinue} activeOpacity={0.85}>
+            <Text style={resStyles.continueBtnText}>BEGIN BREACH  ▶</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -883,7 +883,7 @@ const qaStyles = StyleSheet.create({
     backgroundColor: "#080e1a",
   },
   scrollContent: {
-    paddingBottom: normP(16),
+    paddingBottom: normP(12),
   },
   flashOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -891,17 +891,17 @@ const qaStyles = StyleSheet.create({
   },
   feedbackBadge: {
     alignSelf: "center",
-    marginTop: normP(6),
-    marginBottom: normP(6),
+    marginTop: normP(4),
+    marginBottom: normP(4),
     borderWidth: 2,
-    borderRadius: normP(12),
-    paddingHorizontal: normP(20),
-    paddingVertical: normP(8),
+    borderRadius: normP(10),
+    paddingHorizontal: normP(14),
+    paddingVertical: normP(6),
     backgroundColor: "#080e1a",
   },
   feedbackBadgeTxt: {
     fontFamily: "PixelFont",
-    fontSize: normP(14),
+    fontSize: normP(12),
     letterSpacing: 1,
   },
 
@@ -915,21 +915,21 @@ const qaStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: normP(20),
-    paddingTop: normP(14),
-    paddingBottom: normP(10),
+    paddingHorizontal: normP(16),
+    paddingTop: normP(8),
+    paddingBottom: normP(6),
   },
   phaseLbl: {
     color: "#ffcf5c",
     fontFamily: "PixelFont",
-    fontSize: normP(15),
-    letterSpacing: 2,
+    fontSize: normP(12),
+    letterSpacing: 1.5,
   },
   moduleLbl: {
     color: "#5a7aaa",
     fontFamily: "PixelFont",
-    fontSize: normP(10),
-    marginTop: normP(3),
+    fontSize: normP(8),
+    marginTop: normP(2),
   },
   qPill: {
     flexDirection: "row",
@@ -937,20 +937,20 @@ const qaStyles = StyleSheet.create({
     backgroundColor: "#0f1e35",
     borderWidth: 2,
     borderColor: "#1e3050",
-    borderRadius: normP(10),
-    paddingHorizontal: normP(14),
-    paddingVertical: normP(6),
+    borderRadius: normP(8),
+    paddingHorizontal: normP(10),
+    paddingVertical: normP(4),
   },
   qPillNum: {
     color: "#fff",
     fontFamily: "PixelFont",
-    fontSize: normP(22),
+    fontSize: normP(16),
   },
   qPillOf: {
     color: "#5a7aaa",
     fontFamily: "PixelFont",
-    fontSize: normP(14),
-    marginBottom: normP(2),
+    fontSize: normP(11),
+    marginBottom: normP(1),
   },
 
   // Progress dots
@@ -958,93 +958,92 @@ const qaStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: normP(6),
-    paddingVertical: normP(8),
-    paddingHorizontal: normP(20),
+    gap: normP(5),
+    paddingVertical: normP(6),
+    paddingHorizontal: normP(16),
   },
   dot: {
-    width: normP(8),
-    height: normP(8),
-    borderRadius: normP(4),
+    width: normP(6),
+    height: normP(6),
+    borderRadius: normP(3),
     backgroundColor: "#1e3050",
   },
   dotDone: {
     backgroundColor: "#3fbf7f",
   },
   dotCurrent: {
-    width: normP(20),
+    width: normP(16),
     backgroundColor: "#ffcf5c",
-    borderRadius: normP(4),
+    borderRadius: normP(3),
   },
 
   // Timer
   timerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: normP(20),
-    paddingTop: normP(20),
-    gap: normP(16),
+    paddingHorizontal: normP(16),
+    paddingTop: normP(12),
+    gap: normP(12),
   },
   timerCircle: {
-    width: normP(80),
-    height: normP(80),
-    borderRadius: normP(40),
-    borderWidth: normP(4),
+    width: normP(56),
+    height: normP(56),
+    borderRadius: normP(28),
+    borderWidth: normP(3),
     backgroundColor: "#0c1525",
     justifyContent: "center",
     alignItems: "center",
     shadowOpacity: 0.8,
-    shadowRadius: 12,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
   timerNum: {
     fontFamily: "PixelFont",
-    fontSize: normP(30),
-    lineHeight: normP(34),
+    fontSize: normP(20),
+    lineHeight: normP(22),
   },
   timerSec: {
     fontFamily: "PixelFont",
-    fontSize: normP(10),
-    letterSpacing: 1,
+    fontSize: normP(8),
     marginTop: normP(-2),
   },
   timerBarCol: {
     flex: 1,
   },
   timerBarTrack: {
-    height: normP(14),
+    height: normP(10),
     backgroundColor: "#1e3050",
-    borderRadius: normP(7),
+    borderRadius: normP(5),
     overflow: "hidden",
-    marginBottom: normP(6),
+    marginBottom: normP(4),
   },
   timerBarFill: {
     height: "100%",
-    borderRadius: normP(7),
+    borderRadius: normP(5),
   },
   timerLbl: {
     fontFamily: "PixelFont",
-    fontSize: normP(10),
-    letterSpacing: 1,
+    fontSize: normP(9),
+    letterSpacing: 0.5,
   },
 
   // Question card
   cardWrap: {
-    paddingHorizontal: normP(20),
-    paddingTop: normP(12),
-    paddingBottom: normP(8),
+    paddingHorizontal: normP(16),
+    paddingTop: normP(8),
+    paddingBottom: normP(6),
   },
   card: {
     backgroundColor: "#0f1e35",
     borderWidth: 2,
     borderColor: "#5ac8ff",
-    borderRadius: normP(20),
-    paddingVertical: normP(30),
-    paddingHorizontal: normP(24),
+    borderRadius: normP(14),
+    paddingVertical: normP(16),
+    paddingHorizontal: normP(16),
     alignItems: "center",
     shadowColor: "#5ac8ff",
     shadowOpacity: 0.35,
-    shadowRadius: 24,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },
     elevation: 8,
   },
@@ -1052,43 +1051,43 @@ const qaStyles = StyleSheet.create({
     backgroundColor: "rgba(90,200,255,0.12)",
     borderWidth: 1,
     borderColor: "#5ac8ff",
-    borderRadius: normP(20),
-    paddingHorizontal: normP(14),
-    paddingVertical: normP(4),
-    marginBottom: normP(20),
+    borderRadius: normP(14),
+    paddingHorizontal: normP(10),
+    paddingVertical: normP(3),
+    marginBottom: normP(10),
   },
   cardTypeTxt: {
     color: "#5ac8ff",
     fontFamily: "PixelFont",
-    fontSize: normP(10),
-    letterSpacing: 3,
+    fontSize: normP(9),
+    letterSpacing: 2,
   },
   cardText: {
     color: "#e8f0ff",
-    fontSize: normP(19),
+    fontSize: normP(15),
     textAlign: "center",
-    lineHeight: normP(29),
+    lineHeight: normP(21),
     fontWeight: "500",
   },
 
   // True/False
   tfRow: {
     flexDirection: "row",
-    paddingHorizontal: normP(20),
-    gap: normP(12),
-    marginTop: normP(8),
-    marginBottom: normP(8),
+    paddingHorizontal: normP(16),
+    gap: normP(8),
+    marginTop: normP(6),
+    marginBottom: normP(6),
   },
   tfBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: normP(10),
-    paddingVertical: normP(22),
-    borderRadius: normP(16),
+    gap: normP(8),
+    paddingVertical: normP(14),
+    borderRadius: normP(12),
     borderWidth: 2,
-    minHeight: normP(64),
+    minHeight: normP(48),
   },
   tfBtnTrue: {
     backgroundColor: "#0d2218",
@@ -1099,47 +1098,47 @@ const qaStyles = StyleSheet.create({
     borderColor: "#ff6363",
   },
   tfMark: {
-    fontSize: normP(24),
+    fontSize: normP(18),
     color: "#fff",
   },
   tfLabel: {
     color: "#fff",
     fontFamily: "PixelFont",
-    fontSize: normP(20),
-    letterSpacing: 3,
+    fontSize: normP(15),
+    letterSpacing: 2,
   },
 
   // Multiple Choice
   mcGrid: {
-    paddingHorizontal: normP(20),
-    gap: normP(10),
-    marginTop: normP(8),
-    marginBottom: normP(8),
+    paddingHorizontal: normP(16),
+    gap: normP(6),
+    marginTop: normP(6),
+    marginBottom: normP(6),
   },
   mcBtn: {
     backgroundColor: "#0f1e35",
     borderWidth: 2,
     borderColor: "#5ac8ff",
-    borderRadius: normP(14),
-    paddingVertical: normP(16),
-    paddingHorizontal: normP(20),
+    borderRadius: normP(10),
+    paddingVertical: normP(10),
+    paddingHorizontal: normP(14),
     alignItems: "center",
-    minHeight: normP(54),
+    minHeight: normP(40),
     justifyContent: "center",
   },
   mcLabel: {
     color: "#e8f0ff",
-    fontSize: normP(15),
+    fontSize: normP(13),
     textAlign: "center",
     fontWeight: "500",
   },
 
   // Spot the Error
   seList: {
-    paddingHorizontal: normP(20),
-    gap: normP(8),
-    marginTop: normP(8),
-    marginBottom: normP(8),
+    paddingHorizontal: normP(16),
+    gap: normP(5),
+    marginTop: normP(6),
+    marginBottom: normP(6),
   },
   seItem: {
     flexDirection: "row",
@@ -1147,24 +1146,24 @@ const qaStyles = StyleSheet.create({
     backgroundColor: "#0f1e35",
     borderWidth: 2,
     borderColor: "#ffcf5c",
-    borderRadius: normP(14),
-    paddingVertical: normP(13),
-    paddingHorizontal: normP(16),
-    gap: normP(12),
-    minHeight: normP(52),
+    borderRadius: normP(10),
+    paddingVertical: normP(9),
+    paddingHorizontal: normP(12),
+    gap: normP(8),
+    minHeight: normP(38),
   },
   seIdx: {
     color: "#ffcf5c",
     fontFamily: "PixelFont",
-    fontSize: normP(16),
-    width: normP(22),
+    fontSize: normP(13),
+    width: normP(18),
     textAlign: "center",
   },
   seText: {
     flex: 1,
     color: "#e8f0ff",
-    fontSize: normP(13),
-    lineHeight: normP(19),
+    fontSize: normP(12),
+    lineHeight: normP(16),
   },
 
   // Shared locked state
@@ -1175,12 +1174,12 @@ const qaStyles = StyleSheet.create({
   // Footer
   footer: {
     alignItems: "center",
-    paddingVertical: normP(12),
-    paddingHorizontal: normP(20),
+    paddingVertical: normP(8),
+    paddingHorizontal: normP(16),
   },
   footerHint: {
     color: "#5a7aaa",
-    fontSize: normP(12),
+    fontSize: normP(11),
   },
 });
 
@@ -1191,130 +1190,128 @@ const resStyles = StyleSheet.create({
   },
   safe: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: normP(24),
-    paddingVertical: normP(20),
+    paddingHorizontal: normP(20),
+    paddingVertical: normP(14),
   },
   title: {
     color: "#ffcf5c",
     fontFamily: "PixelFont",
-    fontSize: normP(26),
-    letterSpacing: 3,
+    fontSize: normP(18),
+    letterSpacing: 2,
     textAlign: "center",
   },
-  subtitle: {
-    color: "#5a7aaa",
-    fontSize: normP(13),
-    marginTop: normP(6),
-    marginBottom: normP(28),
-  },
   gradeBadge: {
-    width: normP(110),
-    height: normP(110),
-    borderRadius: normP(55),
-    borderWidth: normP(4),
+    width: normP(100),
+    height: normP(50),
+    borderRadius: normP(37),
+    borderWidth: normP(3),
     backgroundColor: "#0c1525",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: normP(28),
+    marginTop: normP(10),
+    marginBottom: normP(10),
     shadowOpacity: 0.7,
-    shadowRadius: 20,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
+    elevation: 10,
   },
   gradeText: {
     fontFamily: "PixelFont",
-    fontSize: normP(52),
-    lineHeight: normP(60),
+    fontSize: normP(20),
+    lineHeight: normP(20),
   },
   gradeScore: {
     color: "#8a9bc0",
     fontFamily: "PixelFont",
-    fontSize: normP(13),
+    fontSize: normP(10),
   },
   rewardsCard: {
     width: "100%",
     backgroundColor: "#0c1525",
     borderWidth: 2,
     borderColor: "#1e3050",
-    borderRadius: normP(16),
-    padding: normP(20),
-    marginBottom: normP(16),
+    borderRadius: normP(14),
+    padding: normP(14),
+    marginBottom: normP(10),
   },
   rewardsTitle: {
     color: "#5a7aaa",
     fontFamily: "PixelFont",
-    fontSize: normP(10),
-    letterSpacing: 2,
-    marginBottom: normP(16),
+    fontSize: normP(9),
+    letterSpacing: 1.5,
+    marginBottom: normP(10),
   },
   rewardRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: normP(12),
+    gap: normP(10),
   },
   rewardIcon: {
-    fontSize: normP(28),
+    fontSize: normP(20),
   },
   rewardInfo: {
     flex: 1,
   },
   rewardLabel: {
     color: "#8a9bc0",
-    fontSize: normP(12),
+    fontSize: normP(11),
   },
   rewardValue: {
     color: "#fff",
     fontFamily: "PixelFont",
-    fontSize: normP(18),
+    fontSize: normP(14),
     marginTop: normP(2),
   },
   rewardBadge: {
-    paddingHorizontal: normP(10),
-    paddingVertical: normP(5),
-    borderRadius: normP(8),
+    paddingHorizontal: normP(8),
+    paddingVertical: normP(4),
+    borderRadius: normP(6),
   },
   rewardBadgeText: {
     fontFamily: "PixelFont",
-    fontSize: normP(11),
+    fontSize: normP(10),
   },
   divider: {
     height: 1,
     backgroundColor: "#1e3050",
-    marginVertical: normP(14),
+    marginVertical: normP(10),
   },
   tipBox: {
     width: "100%",
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: normP(10),
+    gap: normP(8),
     backgroundColor: "#0f1e35",
-    borderRadius: normP(12),
-    padding: normP(14),
-    marginBottom: normP(24),
+    borderRadius: normP(10),
+    padding: normP(10),
+    marginBottom: normP(14),
   },
   tipIcon: {
-    fontSize: normP(18),
+    fontSize: normP(14),
   },
   tipText: {
     flex: 1,
     color: "#8a9bc0",
-    fontSize: normP(12),
-    lineHeight: normP(18),
+    fontSize: normP(11),
+    lineHeight: normP(15),
   },
   continueBtn: {
     width: "100%",
     backgroundColor: "#ffcf5c",
-    borderRadius: normP(14),
-    paddingVertical: normP(18),
+    borderRadius: normP(12),
+    paddingVertical: normP(13),
     alignItems: "center",
   },
   continueBtnText: {
     color: "#080e1a",
     fontFamily: "PixelFont",
-    fontSize: normP(17),
-    letterSpacing: 2,
+    fontSize: normP(14),
+    letterSpacing: 1.5,
   },
 });
 
