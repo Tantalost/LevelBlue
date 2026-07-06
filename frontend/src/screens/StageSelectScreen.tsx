@@ -17,19 +17,21 @@ const normalize = (size: number) =>
   Math.round(PixelRatio.roundToNearestPixel(size * scaleFactor));
 const bw = (size: number) => Math.max(1, normalize(size));
 
-const STAGE_NUMBERS = [1, 2, 3, 4, 5];
-const POST_TEST_STAGE = STAGE_NUMBERS[STAGE_NUMBERS.length - 1];
+import {
+  ENEMIES_PER_STAGE,
+  POST_TEST_STAGE,
+  STAGE_NUMBERS,
+  WAVE_ENEMY_COUNTS,
+  WAVES_PER_STAGE,
+} from '../features/gameplay/constants/stages';
+import type { BuildingKey, BuildingLevels } from '../features/gameplay/types';
 
-export const WAVES_PER_STAGE = 5;
-export const ENEMIES_PER_STAGE = 30;
-export const WAVE_ENEMY_COUNTS: number[] = [4, 5, 6, 7, 8]; 
-
-export type BuildingKey = "tower" | "glade" | "forge";
-export type BuildingLevels = {
-  tower: number;
-  glade: number;
-  forge: number;
-};
+export {
+  ENEMIES_PER_STAGE,
+  WAVE_ENEMY_COUNTS,
+  WAVES_PER_STAGE,
+} from '../features/gameplay/constants/stages';
+export type { BuildingKey, BuildingLevels } from '../features/gameplay/types';
 
 type StageSelectScreenProps = {
   visible: boolean;
@@ -153,12 +155,16 @@ export default function StageSelectScreen({
   const stars = useMemo(() => STAR_LAYOUT, []);
   const [selectedConfirmStage, setSelectedConfirmStage] = useState<number | null>(null);
 
+  // Fully unmount on iOS — a hidden Modal still blocks touches on screens pushed above Dashboard
+  if (!visible) return null;
+
   return (
     <Modal
-      visible={visible}
+      visible
       transparent
       animationType="fade"
       supportedOrientations={["landscape", "landscape-left", "landscape-right"]}
+      onRequestClose={onClose}
     >
       <View style={styles.screen}>
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -298,8 +304,9 @@ export default function StageSelectScreen({
                 style={styles.confirmBtnYes}
                 onPress={() => {
                   if (selectedConfirmStage !== null) {
-                    onSelectStage(selectedConfirmStage);
+                    const stage = selectedConfirmStage;
                     setSelectedConfirmStage(null);
+                    requestAnimationFrame(() => onSelectStage(stage));
                   }
                 }}
               >

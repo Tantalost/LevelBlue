@@ -1,4 +1,8 @@
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import React from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
@@ -35,36 +39,47 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Splash" component={SplashAnimationScreen} />
-        <Stack.Screen name="Intro" component={IntroScreen} />
-        <Stack.Screen name="Login">
-          {(props) => (
-            <LoginScreen
-              {...props}
-              onLogin={() => {
-                props.navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Dashboard' }],
-                });
-              }}
-            />
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="MissionBriefing" component={MissionBriefingScreen} />
-        <Stack.Screen name="Game" component={GameScreen} />
-        <Stack.Screen name="Progress" component={ProgressScreen} />
-        <Stack.Screen name="Intelligence" component={IntelligenceScreen} />
-        <Stack.Screen name="Lessons" component={LessonsScreen} />
-        <Stack.Screen name="ModuleDetail" component={ModuleDetailScreen} />
-        <Stack.Screen name="Codex" component={CodexScreen} />
-        <Stack.Screen name="PvPHub" component={PvPHubScreen} />
-        <Stack.Screen name="PayloadForge" component={PayloadForgeScreen} />
-        <Stack.Screen name="InboxTriage" component={InboxTriageScreen} />
-        <Stack.Screen name="Store" component={StoreScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Splash" component={SplashAnimationScreen} />
+          <Stack.Screen name="Intro" component={IntroScreen} />
+          <Stack.Screen name="Login">
+            {(props) => (
+              <LoginScreen
+                {...props}
+                onLogin={() => {
+                  props.navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }],
+                  });
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="MissionBriefing" component={MissionBriefingScreen} />
+          <Stack.Screen
+            name="Game"
+            component={GameScreen}
+            options={{
+              gestureEnabled: false,
+              animation: 'fade',
+              contentStyle: { backgroundColor: '#080e1a' },
+              ...(Platform.OS === 'ios' ? { presentation: 'fullScreenModal' as const } : {}),
+            }}
+          />
+          <Stack.Screen name="Progress" component={ProgressScreen} />
+          <Stack.Screen name="Intelligence" component={IntelligenceScreen} />
+          <Stack.Screen name="Lessons" component={LessonsScreen} />
+          <Stack.Screen name="ModuleDetail" component={ModuleDetailScreen} />
+          <Stack.Screen name="Codex" component={CodexScreen} />
+          <Stack.Screen name="PvPHub" component={PvPHubScreen} />
+          <Stack.Screen name="PayloadForge" component={PayloadForgeScreen} />
+          <Stack.Screen name="InboxTriage" component={InboxTriageScreen} />
+          <Stack.Screen name="Store" component={StoreScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
   );
 }

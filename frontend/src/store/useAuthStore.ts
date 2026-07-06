@@ -27,6 +27,7 @@ interface AuthState {
   token: string | null;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
+  updateMastery: (topic: keyof NonNullable<User['mastery']>, probabilityKnown: number) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -34,4 +35,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   setAuth: (user, token) => set({ user, token }),
   clearAuth: () => set({ user: null, token: null }),
+  updateMastery: (topic, probabilityKnown) =>
+    set((state) => {
+      if (!state.user) return state;
+      return {
+        user: {
+          ...state.user,
+          mastery: {
+            ...state.user.mastery,
+            [topic]: probabilityKnown,
+          },
+        },
+      };
+    }),
 }));

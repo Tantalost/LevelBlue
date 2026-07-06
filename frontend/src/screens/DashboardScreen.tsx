@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,27 @@ import {
   useWindowDimensions,
   Modal,
   Animated,
+  InteractionManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import StageSelectScreen, { BuildingLevels } from './StageSelectScreen';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
+import StageSelectScreen from './StageSelectScreen';
+import { useProgressionStore } from '../store/useProgressionStore';
 
 const BASE_WIDTH = 932; // The width the mockup was authored on
 
 export default function DashboardScreen({ navigation }: any) {
+  const route = useRoute<any>();
   const { width } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(width), [width]);
+
+  const materials = useProgressionStore((s) => s.materials);
+  const threatPoints = useProgressionStore((s) => s.threatPoints);
+  const buildingLevels = useProgressionStore((s) => s.buildingLevels);
+  const currentStage = useProgressionStore((s) => s.currentStage);
+  const highestUnlockedStage = useProgressionStore((s) => s.highestUnlockedStage);
+  const upgradeBuilding = useProgressionStore((s) => s.upgradeBuilding);
+  const setCurrentStage = useProgressionStore((s) => s.setCurrentStage);
 
   const [selectedMode, setSelectedMode] = useState<'SOLO' | 'PVP'>('SOLO');
   const [modeModalVisible, setModeModalVisible] = useState(false);
@@ -46,11 +58,23 @@ export default function DashboardScreen({ navigation }: any) {
   };
 
   const [stageSelectVisible, setStageSelectVisible] = useState(false);
-  const [buildingLevels, setBuildingLevels] = useState<BuildingLevels>({
-    tower: 1,
-    glade: 1,
-    forge: 1,
-  });
+
+  // Force-close overlay modals when leaving Dashboard (prevents iOS touch blocking on Game screen)
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setStageSelectVisible(false);
+        setModeModalVisible(false);
+      };
+    }, []),
+  );
+
+  useEffect(() => {
+    if (route.params?.showStageSelect) {
+      setStageSelectVisible(true);
+      navigation.setParams({ showStageSelect: undefined });
+    }
+  }, [route.params?.showStageSelect, navigation]);
 
   return (
     <View style={styles.container}>
@@ -99,7 +123,7 @@ export default function DashboardScreen({ navigation }: any) {
                 </Text>
                 <View style={styles.resourceBox}>
                   <Text style={styles.resourceIcon}>💀</Text>
-                  <Text style={styles.resourceValue}>2400</Text>
+                  <Text style={styles.resourceValue}>{threatPoints}</Text>
                 </View>
               </View>
 
@@ -109,7 +133,7 @@ export default function DashboardScreen({ navigation }: any) {
                 </Text>
                 <View style={styles.resourceBox}>
                   <Text style={styles.resourceIcon}>🔧</Text>
-                  <Text style={styles.resourceValue}>1150</Text>
+                  <Text style={styles.resourceValue}>{materials}</Text>
                 </View>
               </View>
 
@@ -201,8 +225,9 @@ export default function DashboardScreen({ navigation }: any) {
       </ImageBackground>
 
       {/* ================= MODE SELECTOR MODAL ================= */}
+      {modeModalVisible && (
       <Modal
-        visible={modeModalVisible}
+        visible
         transparent
         animationType="fade"
         supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
@@ -328,21 +353,30 @@ export default function DashboardScreen({ navigation }: any) {
 
         </View>
       </Modal>
+      )}
 
       <StageSelectScreen
         visible={stageSelectVisible}
         onClose={() => setStageSelectVisible(false)}
         navigation={navigation}
-        currentStage={1}
+        currentStage={currentStage}
+        highestUnlockedStage={highestUnlockedStage}
+        materials={materials}
         onSelectStage={(stage) => {
-          setStageSelectVisible(false); // Close Modal
-          navigation.navigate('Game', { stage }); // Go to GameScreen with selected stage
+          setCurrentStage(stage);
+          setStageSelectVisible(false);
+          // Wait for stage-select modals to fully dismiss before pushing Game (fixes blank screen on mobile)
+          InteractionManager.runAfterInteractions(() => {
+            setTimeout(() => {
+              navigation.replace('Game', {
+                stage,
+                moduleName: 'Module 1: The Basics',
+              });
+            }, 250);
+          });
         }}
         buildingLevels={buildingLevels}
-        onUpgradeBuilding={(building) => {
-          // Local dashboard upgrade logic placeholder
-          setBuildingLevels(prev => ({ ...prev, [building]: prev[building] + 1 }));
-        }}
+        onUpgradeBuilding={upgradeBuilding}
       />
     </View>
   );
