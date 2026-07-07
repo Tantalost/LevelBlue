@@ -124,6 +124,7 @@ const RadarChart = ({ data }: { data: RadarEntry[] }) => {
               y={p.y + s(4)}
               fill="#b0c8f0"
               fontSize={s(10)}
+              fontFamily="PixelFont"
               fontWeight="bold"
               textAnchor="middle"
             >
@@ -465,6 +466,7 @@ const ps = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: s(4),
     marginTop: s(4),
+    fontFamily: 'PixelFont',
   },
   pageSub: {
     color: '#5a7aaa',
@@ -494,6 +496,7 @@ const ps = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 2,
     marginBottom: s(4),
+    fontFamily: 'PixelFont',
   },
   sectionTitle: {
     color: '#fff',
@@ -613,6 +616,7 @@ const ps = StyleSheet.create({
     fontSize: s(12),
     flex: 1,
     marginRight: s(8),
+    fontFamily: 'PixelFont',
   },
   modulePct: {
     fontSize: s(11),
@@ -640,8 +644,8 @@ const ps = StyleSheet.create({
     borderTopWidth: bw(1),
     borderTopColor: '#1e3050',
   },
-  activityIcon: { fontSize: s(20) },
-  activityLabel: { color: '#e8f0ff', fontSize: s(13), fontWeight: 'bold' },
-  activitySub:   { color: '#5a7aaa', fontSize: s(11), marginTop: s(1) },
-  activityPts:   { fontWeight: 'bold', fontSize: s(12) },
+  activityIcon: { fontSize: s(20), },
+  activityLabel: { color: '#e8f0ff', fontSize: s(12), fontWeight: 'bold', fontFamily: 'PixelFont', },
+  activitySub:   { color: '#5a7aaa', fontSize: s(11), marginTop: s(1),  },
+  activityPts:   { fontWeight: 'bold', fontSize: s(12), fontFamily: 'PixelFont', },
 });
