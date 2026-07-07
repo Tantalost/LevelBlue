@@ -18,8 +18,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
 import StageSelectScreen from './StageSelectScreen';
 import { useProgressionStore } from '../store/useProgressionStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 const BASE_WIDTH = 932; // The width the mockup was authored on
+
+function formatProfileName(name?: string) {
+  if (!name) return 'COMMANDER_X';
+
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'COMMANDER_X';
+  if (parts.length === 1) return parts[0].replace(/\s+/g, '_').toUpperCase();
+
+  const lastName = parts[parts.length - 1];
+  return `${lastName}`.replace(/\s+/g, '_').toUpperCase();
+}
 
 export default function DashboardScreen({ navigation }: any) {
   const route = useRoute<any>();
@@ -33,6 +45,8 @@ export default function DashboardScreen({ navigation }: any) {
   const highestUnlockedStage = useProgressionStore((s) => s.highestUnlockedStage);
   const upgradeBuilding = useProgressionStore((s) => s.upgradeBuilding);
   const setCurrentStage = useProgressionStore((s) => s.setCurrentStage);
+  const user = useAuthStore((s) => s.user);
+  const displayName = useMemo(() => formatProfileName(user?.name), [user?.name]);
 
   const [selectedMode, setSelectedMode] = useState<'SOLO' | 'PVP'>('SOLO');
   const [modeModalVisible, setModeModalVisible] = useState(false);
@@ -98,7 +112,7 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
 
               <View style={styles.profileInfo}>
-                <Text style={styles.playerName}>COMMANDER_X</Text>
+                <Text style={styles.playerName}>{displayName}</Text>
 
                 <View style={styles.rankRow}>
                   <Text style={styles.rankText} numberOfLines={1}>

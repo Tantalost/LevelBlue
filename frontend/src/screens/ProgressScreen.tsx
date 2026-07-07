@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   PixelRatio,
 } from 'react-native';
 import Svg, { Polygon, Line, Text as SvgText, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import { useProgressionStore } from '../store/useProgressionStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 // ── Portrait-first scaling ──────────────────────────────────────────────────
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -212,22 +214,57 @@ const Bar = ({ pct, color }: { pct: number; color: string }) => (
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProgressScreen({ navigation }: any) {
-  const masteryData: RadarEntry[] = [
-    { label: 'EMAIL',    value: 88 },
-    { label: 'PRETEXT',  value: 64 },
-    { label: 'SMS',      value: 52 },
-    { label: 'PHYSICAL', value: 35 },
-    { label: 'OSINT',    value: 21 },
-    { label: 'MALWARE',  value: 75 },
-  ];
+  const materials = useProgressionStore((s) => s.materials);
+  const threatPoints = useProgressionStore((s) => s.threatPoints);
+  const currentStage = useProgressionStore((s) => s.currentStage);
+  const highestUnlockedStage = useProgressionStore((s) => s.highestUnlockedStage);
+  const user = useAuthStore((s) => s.user);
 
-  const modules = [
-    { name: 'Phishing & Email Threats',      pct: 80, done: true  },
-    { name: 'Social Engineering Pretexting', pct: 45, done: false },
-    { name: 'SMS & Vishing Attacks',         pct: 20, done: false },
-    { name: 'Physical Security Breaches',    pct: 0,  done: false },
-    { name: 'OSINT & Reconnaissance',        pct: 0,  done: false },
-  ];
+  const masteryData = useMemo<RadarEntry[]>(() => {
+    const baseValues = [
+      { label: 'EMAIL', value: 88 },
+      { label: 'PRETEXT', value: 64 },
+      { label: 'SMS', value: 52 },
+      { label: 'PHYSICAL', value: 35 },
+      { label: 'OSINT', value: 21 },
+      { label: 'MALWARE', value: 75 },
+    ];
+
+    if (!user?.mastery) return baseValues;
+
+    const masteryMap = user.mastery;
+    return [
+      { label: 'EMAIL', value: Math.round((masteryMap.Phishing ?? 0) * 100) },
+      { label: 'PRETEXT', value: Math.round((masteryMap.Pretexting ?? 0) * 100) },
+      { label: 'SMS', value: Math.round((masteryMap.Smishing ?? 0) * 100) },
+      { label: 'PHYSICAL', value: Math.round((masteryMap.Baiting ?? 0) * 100) },
+      { label: 'OSINT', value: Math.round((masteryMap.Vishing ?? 0) * 100) },
+      { label: 'MALWARE', value: Math.round((masteryMap.Phishing ?? 0) * 100) },
+    ];
+  }, [user?.mastery]);
+
+  const modules = useMemo(() => {
+    const completedCount = Math.max(0, Math.min(5, highestUnlockedStage - 1));
+    const progressPct = Math.round((completedCount / 5) * 100);
+
+    return [
+      { name: 'Phishing & Email Threats', pct: 100, done: true },
+      { name: 'Social Engineering Pretexting', pct: completedCount >= 2 ? 100 : 45, done: completedCount >= 2 },
+      { name: 'SMS & Vishing Attacks', pct: completedCount >= 3 ? 100 : 20, done: completedCount >= 3 },
+      { name: 'Physical Security Breaches', pct: completedCount >= 4 ? 100 : 0, done: completedCount >= 4 },
+      { name: 'OSINT & Reconnaissance', pct: completedCount >= 5 ? 100 : 0, done: completedCount >= 5 },
+    ];
+  }, [highestUnlockedStage]);
+
+  const completedModules = modules.filter((module) => module.done).length;
+  const xpEarned = Math.max(0, (completedModules * 320) + (currentStage - 1) * 120);
+  const accuracy = Math.max(0, Math.min(100, Math.round((completedModules / 5) * 100 + 20)));
+  const bestStreak = Math.min(7, Math.max(1, completedModules));
+  const rank = completedModules >= 5 ? 'SILVER' : completedModules >= 3 ? 'BRONZE' : 'NOVICE';
+  const rankColor = completedModules >= 5 ? '#5ac8ff' : completedModules >= 3 ? '#cd7f32' : '#3fbf7f';
+  const xpToNext = completedModules >= 5 ? 0 : Math.max(0, 1600 - xpEarned);
+
+  const summaryLabel = completedModules === 5 ? 'All modules cleared' : `${completedModules} of 5 modules completed`;
 
   return (
     <SafeAreaView style={ps.safe}>
@@ -240,11 +277,11 @@ export default function ProgressScreen({ navigation }: any) {
         <View style={ps.headerRight}>
           <View style={ps.resBadge}>
             <Text style={ps.resBadgeIcon}>💀</Text>
-            <Text style={ps.resBadgeTxt}>2,400</Text>
+            <Text style={ps.resBadgeTxt}>{threatPoints.toLocaleString()}</Text>
           </View>
           <View style={ps.resBadge}>
             <Text style={ps.resBadgeIcon}>🔧</Text>
-            <Text style={ps.resBadgeTxt}>1,150</Text>
+            <Text style={ps.resBadgeTxt}>{materials.toLocaleString()}</Text>
           </View>
         </View>
       </View>
@@ -255,14 +292,14 @@ export default function ProgressScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
       >
         {/* ── PAGE TITLE ── */}
-        <Text style={ps.pageTitle}>Your Progress</Text>
-        <Text style={ps.pageSub}>Track your social engineering defense skills</Text>
+        <Text style={ps.pageTitle}>{user?.name ? `${user.name.split(' ')[0]}’s Progress` : 'Your Progress'}</Text>
+        <Text style={ps.pageSub}>{summaryLabel}</Text>
 
         {/* ── STAT PILLS ── */}
         <View style={ps.pillRow}>
-          <StatPill icon="⚡" label="XP Earned"    value="3,240"  color="#ffcf5c" />
-          <StatPill icon="🎯" label="Accuracy"      value="74%"    color="#3fbf7f" />
-          <StatPill icon="🏆" label="Best Streak"   value="7"      color="#d400ff" />
+          <StatPill icon="⚡" label="XP Earned" value={xpEarned.toLocaleString()} color="#ffcf5c" />
+          <StatPill icon="🎯" label="Accuracy" value={`${accuracy}%`} color="#3fbf7f" />
+          <StatPill icon="🏆" label="Best Streak" value={bestStreak.toString()} color="#d400ff" />
         </View>
 
         {/* ── RANK CARD ── */}
@@ -271,20 +308,20 @@ export default function ProgressScreen({ navigation }: any) {
           <View style={ps.rankRow}>
             {/* Medal */}
             <View style={ps.medalWrap}>
-              <View style={ps.medal}>
-                <Text style={ps.medalText}>🥉</Text>
+              <View style={[ps.medal, { borderColor: rankColor }]}>
+                <Text style={ps.medalText}>{completedModules >= 5 ? '🥈' : completedModules >= 3 ? '🥉' : '🎖️'}</Text>
               </View>
-              <Text style={ps.medalName}>BRONZE</Text>
+              <Text style={[ps.medalName, { color: rankColor }]}>{rank}</Text>
             </View>
 
             {/* Rank details */}
             <View style={{ flex: 1 }}>
               <View style={ps.rankMeta}>
-                <Text style={ps.rankMetaLabel}>3,240 XP</Text>
-                <Text style={ps.rankMetaLabel}>Silver at 3,500</Text>
+                <Text style={ps.rankMetaLabel}>{xpEarned.toLocaleString()} XP</Text>
+                <Text style={ps.rankMetaLabel}>{completedModules >= 5 ? 'Silver at 3,500' : `Next tier at ${xpToNext} XP`}</Text>
               </View>
-              <Bar pct={74} color="#cd7f32" />
-              <Text style={ps.rankHint}>260 XP to Silver</Text>
+              <Bar pct={Math.min(100, Math.round((xpEarned / 3500) * 100))} color={rankColor} />
+              <Text style={[ps.rankHint, { color: rankColor }]}>{xpToNext > 0 ? `${xpToNext} XP to next tier` : 'You reached the next tier'}</Text>
 
               {/* Tier row */}
               <View style={ps.tierRow}>
@@ -301,7 +338,7 @@ export default function ProgressScreen({ navigation }: any) {
         {/* ── MODULE PROGRESS ── */}
         <View style={ps.sectionCard}>
           <Text style={ps.sectionLabel}>MODULE PROGRESS</Text>
-          <Text style={ps.sectionTitle}>1 of 5 Modules Completed</Text>
+          <Text style={ps.sectionTitle}>{completedModules} of 5 Modules Completed</Text>
           {modules.map((m, i) => (
             <View key={i} style={ps.moduleRow}>
               <View style={[ps.moduleNum, m.done && ps.moduleNumDone]}>
@@ -331,8 +368,8 @@ export default function ProgressScreen({ navigation }: any) {
           <Text style={ps.sectionTitle}>Threat Recognition Skills</Text>
           <Text style={ps.sectionSub}>
             Your strongest area is{' '}
-            <Text style={{ color: '#d400ff' }}>Email</Text> (88%) · Weakest is{' '}
-            <Text style={{ color: '#ff6363' }}>OSINT</Text> (21%)
+            <Text style={{ color: '#d400ff' }}>{masteryData.reduce((best, item) => item.value > best.value ? item : best, masteryData[0]).label}</Text> ({Math.max(...masteryData.map((item) => item.value))}%) · Weakest is{' '}
+            <Text style={{ color: '#ff6363' }}>{masteryData.reduce((worst, item) => item.value < worst.value ? item : worst, masteryData[0]).label}</Text> ({Math.min(...masteryData.map((item) => item.value))}%)
           </Text>
           <RadarChart data={masteryData} />
         </View>
