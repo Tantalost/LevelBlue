@@ -58,7 +58,7 @@ const BUILDINGS: {
   iconType: 'image' | 'emoji';
   color: string;
   buffLabel: (level: number) => string;
-  cost: number;
+  cost: (level: number) => number;
 }[] = [
     {
       key: "tower",
@@ -67,7 +67,7 @@ const BUILDINGS: {
       iconType: 'image',
       color: "#5ac8ff",
       buffLabel: (level) => `+${8 * level} DMG`,
-      cost: 25,
+      cost: (level) => Math.round(25 * Math.pow(1.4, level)),
     },
     {
       key: "glade",
@@ -76,7 +76,7 @@ const BUILDINGS: {
       iconType: 'image',
       color: "#3fbf7f",
       buffLabel: (level) => `+${(0.5 * level).toFixed(1)} RANGE`,
-      cost: 25,
+      cost: (level) => Math.round(50 * Math.pow(1.4, level)),
     },
     {
       key: "forge",
@@ -85,7 +85,7 @@ const BUILDINGS: {
       iconType: 'image',
       color: "#ed9129",
       buffLabel: (level) => `-${100 * level}ms CD`,
-      cost: 25,
+      cost: (level) => Math.round(100 * Math.pow(1.4, level)),
     },
   ];
 
@@ -196,7 +196,8 @@ export default function StageSelectScreen({
         <View style={styles.buildingRow}>
           {BUILDINGS.map((building) => {
             const level = buildingLevels[building.key];
-            const canAfford = materials >= building.cost;
+            const nextCost = building.cost(level);
+            const canAfford = materials >= nextCost; 
             return (
               <TouchableOpacity
                 key={building.key}
@@ -242,7 +243,7 @@ export default function StageSelectScreen({
                   {building.buffLabel(level)}
                 </Text>
                 <Text style={[styles.buildingCost, !canAfford && styles.costError]}>
-                  {building.cost} Materials
+                  {nextCost} Materials
                 </Text>
               </TouchableOpacity>
             );
