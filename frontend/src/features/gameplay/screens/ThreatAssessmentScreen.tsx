@@ -338,7 +338,7 @@ export default function ThreatAssessmentScreen({
 
         <View style={styles.footer}>
           <Text style={styles.footerHint}>
-            Each answer updates BKT P(L) via assess_bkt · +{GOLD_PER_CORRECT_ANSWER}g per correct
+            Each correct answer = +{GOLD_PER_CORRECT_ANSWER}g · no gold earned during combat
           </Text>
         </View>
       </View>

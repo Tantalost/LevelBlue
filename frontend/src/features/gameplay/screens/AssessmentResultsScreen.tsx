@@ -52,8 +52,8 @@ export default function AssessmentResultsScreen({ combat, onContinue }: Props) {
       badgeBg: '#101828',
     },
     {
-      label: 'Starting Gold',
-      value: `+${combat.startingGold}g`,
+      label: 'Deployment Budget',
+      value: `${combat.startingGold}g`,
       badge: `${combat.correctCount} ok`,
       badgeColor: '#ffcf5c',
       badgeBg: '#2a1800',
@@ -115,7 +115,7 @@ export default function AssessmentResultsScreen({ combat, onContinue }: Props) {
 
         {!compact && (
           <Text style={styles.tipText} numberOfLines={2}>
-            P(L) scaled your gold and HP. Deploy wisely with {combat.startingGold}g.
+            P(L) set your budget. No gold during combat — only your {combat.startingGold}g from Q&A.
           </Text>
         )}
 

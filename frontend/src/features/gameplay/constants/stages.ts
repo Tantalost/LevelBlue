@@ -7,6 +7,5 @@ export const WAVE_ENEMY_COUNTS: number[] = [4, 5, 6, 7, 8];
 
 export const STAGE_CLEAR_MATERIALS = 50;
 export const STAGE_CLEAR_THREAT_POINTS = 100;
-export const GOLD_PER_KILL = 10;
 export const GOLD_PER_CORRECT_ANSWER = 15;
 export const MAX_BASE_HEALTH = 5;

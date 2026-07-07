@@ -39,7 +39,7 @@ export default function TowerDefenseScreen({ stage, combat, onStageEnd, onExit }
       <SafeAreaView style={styles.hudTop}>
         <View style={styles.hudRow}>
           <View style={styles.hudGroup}>
-            <Text style={styles.hudGroupLabel}>GOLD</Text>
+            <Text style={styles.hudGroupLabel}>BUDGET</Text>
             <Text style={styles.hudStat}>{td.gold}g</Text>
           </View>
           <View style={styles.hudGroup}>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder } from 'react-native';
 import { BOARD_COLS, BOARD_ROWS, GAME_TICK_MS, PATH_TILES } from '../constants/board';
-import { GOLD_PER_KILL, WAVE_ENEMY_COUNTS, WAVES_PER_STAGE } from '../constants/stages';
+import { WAVE_ENEMY_COUNTS, WAVES_PER_STAGE } from '../constants/stages';
 import { TOWER_STATS } from '../constants/towers';
 import { buildPathPoints, getPathLength, getPathPoint } from '../engine/path';
 import type {
@@ -35,7 +35,9 @@ export function useTowerDefense({
   const [towers, setTowers] = useState<Tower[]>([]);
   const [currentWave, setCurrentWave] = useState(0);
   const [waveSpawned, setWaveSpawned] = useState(0);
-  const [message, setMessage] = useState(`Deploy towers to survive! Gold: ${startingGold}`);
+  const [message, setMessage] = useState(
+    `Fixed deployment budget: ${startingGold}g — spend it wisely.`,
+  );
   const [selectedTowerType, setSelectedTowerType] = useState<TowerType | null>(null);
   const [draggingTower, setDraggingTower] = useState<{ type: TowerType; x: number; y: number } | null>(null);
   const [boardLayout, setBoardLayout] = useState<BoardLayout | null>(null);
@@ -221,11 +223,6 @@ export function useTowerDefense({
                 if (enemy.id !== inRange.id) return enemy;
                 const newHp = enemy.hp - dmg;
                 if (newHp <= 0) {
-                  setGold((g) => {
-                    const next = g + GOLD_PER_KILL;
-                    goldRef.current = next;
-                    return next;
-                  });
                   return { ...enemy, hp: -1 };
                 }
                 return { ...enemy, hp: newHp };
