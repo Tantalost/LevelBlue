@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -161,20 +161,32 @@ function SimulationModal({
   accentColor,
   onClose,
   onComplete,
+  visible,
 }: {
   lesson: Lesson;
   accentColor: string;
   onClose: () => void;
   onComplete: () => void;
+  visible: boolean;
 }) {
   const [phase, setPhase] = useState<'brief' | 'task' | 'done'>('brief');
 
-  return (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <View style={sm.overlay}>
-        <View style={[sm.panel, { borderColor: accentColor }]}>
+  useEffect(() => {
+    if (!visible) {
+      setPhase('brief');
+    }
+  }, [visible]);
 
-          {/* Header */}
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+      onRequestClose={onClose}
+    >
+      <View style={sm.overlay}>
+        <View style={[sm.panel, { borderColor: accentColor }]}> 
           <View style={sm.panelHeader}>
             <Text style={[sm.panelHeaderTxt, { color: accentColor }]}>
               {phase === 'done' ? '✅  SIMULATION COMPLETE' : `⚡  ${lesson.simulation.title.toUpperCase()}`}
@@ -487,19 +499,18 @@ export default function ModuleDetailScreen({ route, navigation }: any) {
       </View>
 
       {/* Simulation Modal */}
-      {simOpen && (
-        <SimulationModal
-          lesson={selectedLesson}
-          accentColor={accentColor}
-          onClose={() => setSimOpen(false)}
-          onComplete={() => {
-            markComplete(selectedLesson.id);
-            // Auto-advance to next lesson
-            const nextLesson = lessons.find(l => l.id === selectedLesson.id + 1);
-            if (nextLesson) setSelectedLesson(nextLesson);
-          }}
-        />
-      )}
+      <SimulationModal
+        visible={simOpen}
+        lesson={selectedLesson}
+        accentColor={accentColor}
+        onClose={() => setSimOpen(false)}
+        onComplete={() => {
+          markComplete(selectedLesson.id);
+          // Auto-advance to next lesson
+          const nextLesson = lessons.find(l => l.id === selectedLesson.id + 1);
+          if (nextLesson) setSelectedLesson(nextLesson);
+        }}
+      />
     </SafeAreaView>
   );
 }

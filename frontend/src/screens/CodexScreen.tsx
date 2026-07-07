@@ -287,15 +287,23 @@ const RARITY_COLOR: Record<string, string> = {
 // ────────────────────────────────────────────────────────────────────────────
 function DetailModal({
   entry,
+  visible,
   onClose,
 }: {
   entry: CodexEntry;
+  visible: boolean;
   onClose: () => void;
 }) {
   const rarityColor = RARITY_COLOR[entry.rarity];
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+      onRequestClose={onClose}
+    >
       <View style={dm.overlay}>
         <View style={[dm.panel, { borderColor: entry.accentColor }]}>
 
@@ -637,9 +645,11 @@ export default function CodexScreen({ navigation }: any) {
       </Animated.View>
 
       {/* ── DETAIL MODAL ── */}
-      {selected && (
-        <DetailModal entry={selected} onClose={() => setSelected(null)} />
-      )}
+      <DetailModal
+        visible={selected !== null}
+        entry={selected ?? UNITS[0]}
+        onClose={() => setSelected(null)}
+      />
     </SafeAreaView>
   );
 }

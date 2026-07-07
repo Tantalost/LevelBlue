@@ -128,8 +128,8 @@ function Star({
     <Animated.View
       style={{
         position: "absolute",
-        top,
-        left,
+        top: top as any,
+        left: left as any,
         width: size,
         height: size,
         borderRadius: size / 2,

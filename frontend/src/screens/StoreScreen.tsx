@@ -125,7 +125,16 @@ export default function StoreScreen({ navigation }: any) {
               )}
             />
 
-            <Modal visible={purchaseModal} transparent animationType="fade">
+            <Modal
+              visible={purchaseModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => {
+                setPurchaseModal(false);
+                setSelectedItem(null);
+              }}
+              supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+            >
               <View style={styles.modalOverlayCenter}>
                 <View style={styles.modalCard}>
                   <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
@@ -134,19 +143,26 @@ export default function StoreScreen({ navigation }: any) {
                     <TouchableOpacity
                       style={[styles.confirmButton, { marginRight: normalize(12) }]}
                       onPress={() => {
-                        if (skulls >= (selectedItem?.price || 0)) {
-                          setSkulls(skulls - (selectedItem?.price || 0));
+                        if (selectedItem && skulls >= selectedItem.price) {
+                          setSkulls(skulls - selectedItem.price);
                           setPurchaseMessage('Purchase successful');
                         } else {
                           setPurchaseMessage('Insufficient threat points');
                         }
                         setPurchaseModal(false);
+                        setSelectedItem(null);
                         setTimeout(() => setPurchaseMessage(''), 2000);
                       }}
                     >
                       <Text style={styles.confirmButtonText}>CONFIRM</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.cancelButton} onPress={() => setPurchaseModal(false)}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => {
+                        setPurchaseModal(false);
+                        setSelectedItem(null);
+                      }}
+                    >
                       <Text style={styles.cancelButtonText}>CANCEL</Text>
                     </TouchableOpacity>
                   </View>
