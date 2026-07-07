@@ -58,7 +58,7 @@ export default function PvPHubScreen({ navigation }: any) {
       {/* ── HEADER ── */}
       <View style={ph.header}>
         <TouchableOpacity style={ph.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={ph.backBtnTxt}>←</Text>
+          <Text style={ph.backButtonText}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={ph.headerTitle}>THREAT SIMULATOR</Text>
@@ -234,7 +234,11 @@ const ph = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     backgroundColor: 'rgba(10,15,25,0.9)',
   },
-  backBtnTxt: { color: '#fff', fontSize: s(16) },
+  backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: s(14),
+  },
   headerTitle: { color: '#fff', fontFamily: 'PixelFont', fontSize: s(10), letterSpacing: 2 },
   headerSub:   { color: '#ff4466', fontSize: s(9), marginTop: s(2) },
   tpBadge: {

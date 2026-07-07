@@ -330,7 +330,7 @@ export default function LessonsScreen({ navigation }: any) {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Text style={ls.backBtnTxt}>←</Text>
+          <Text style={ls.backButtonText}>←</Text>
         </TouchableOpacity>
 
         <View style={ls.headerTextWrap}>
@@ -540,7 +540,11 @@ function makeScreenStyles(s: (n: number) => number, bw: (n: number) => number, i
       alignItems: 'center',
       backgroundColor: 'rgba(10,15,25,0.9)',
     },
-    backBtnTxt: { color: '#fff', fontSize: s(17) },
+    backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: s(14),
+    },
     headerTextWrap: { flex: 1 },
     headerTitle: { fontFamily: PIXEL_FONT, color: '#fff', fontSize: s(13), letterSpacing: 2 },
     headerCaption: { color: '#6f8bb5', fontSize: s(11), marginTop: s(4) },

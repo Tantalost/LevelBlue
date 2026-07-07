@@ -203,7 +203,7 @@ const is = StyleSheet.create({
   headerTitle: {
     color: '#ffffff',
     fontFamily: 'PixelFont',
-    fontSize: s(11),
+    fontSize: s(14),
     letterSpacing: 1,
   },
   headerRight: {
@@ -214,11 +214,12 @@ const is = StyleSheet.create({
   resourceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: bw(1),
+    borderColor: '#bda05e',
+    borderRadius: s(999),
+    backgroundColor: '#bda05e18',
     paddingHorizontal: s(10),
-    paddingVertical: s(4),
-    borderRadius: s(12),
-    gap: s(4),
+    paddingVertical: s(6),
   },
   resourceIcon: { fontSize: s(11) },
   resourceText: {

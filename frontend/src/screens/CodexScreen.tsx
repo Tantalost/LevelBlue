@@ -586,7 +586,7 @@ export default function CodexScreen({ navigation }: any) {
       {/* ── HEADER (matches IntelligenceScreen style) ── */}
       <View style={cs.header}>
         <TouchableOpacity style={cs.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={cs.backBtnTxt}>←</Text>
+          <Text style={cs.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={cs.headerTitle}>CODEX</Text>
         <View style={cs.headerRight}>
@@ -685,7 +685,11 @@ const cs = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(10,15,25,0.9)',
   },
-  backBtnTxt:   { color: '#fff', fontSize: s(16) },
+  backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: s(14),
+  },
   headerTitle: {
     color: '#fff',
     fontFamily: 'PixelFont',
@@ -697,11 +701,12 @@ const cs = StyleSheet.create({
   resBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderWidth: bw(1),
+    borderColor: '#bda05e',
+    borderRadius: s(999),
+    backgroundColor: '#bda05e18',
     paddingHorizontal: s(10),
-    paddingVertical: s(4),
-    borderRadius: s(12),
-    gap: s(4),
+    paddingVertical: s(6),
   },
   resBadgeIcon: { fontSize: s(11) },
   resBadgeTxt:  { color: '#fff', fontFamily: 'PixelFont', fontSize: s(9) },

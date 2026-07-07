@@ -384,7 +384,7 @@ export default function ModuleDetailScreen({ route, navigation }: any) {
       {/* ── Header ── */}
       <View style={[ds.header, { borderBottomColor: accentColor + '80' }]}>
         <TouchableOpacity style={[ds.backBtn, { borderColor: accentColor }]} onPress={() => navigation.goBack()}>
-          <Text style={ds.backBtnTxt}>←</Text>
+          <Text style={ds.backButtonText}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[ds.headerMod, { color: accentColor }]}>MODULE {module.id}</Text>
@@ -548,7 +548,11 @@ const ds = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(10,15,25,0.9)',
   },
-  backBtnTxt:   { color: '#fff', fontSize: s(16) },
+  backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: s(14),
+  },
   headerMod:    { fontSize: s(9),  fontWeight: '900', letterSpacing: 2, marginBottom: s(1) },
   headerTitle:  { color: '#fff',   fontSize: s(13),  fontWeight: 'bold' },
   moduleIcon:   { fontSize: s(28) },

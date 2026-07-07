@@ -69,7 +69,6 @@ export default function StoreScreen({ navigation }: any) {
 
             <View style={styles.headerTextWrap}>
               <Text style={styles.headerTitle}>STORE</Text>
-              <Text style={styles.headerCaption}>Spend your threat points</Text>
             </View>
 
             <View style={styles.headerBadge}>
@@ -206,16 +205,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBarContainer: {
-    height: normalize(48),
-    backgroundColor: 'rgba(5, 12, 24, 0.9)',
-    borderBottomWidth: bw(1),
-    borderTopWidth: bw(1),
-    borderColor: '#bda05e',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: 'rgba(5,12,24,0.92)',
+    borderTopWidth: bw(1),
+    borderBottomWidth: bw(1),
+    borderColor: '#bda05e',
     paddingHorizontal: normalize(16),
-    marginTop: normalize(20),
+    paddingVertical: normalize(8),
   },
   headerTextWrap: {
     flex: 1,
@@ -240,7 +238,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#ffffff',
     fontFamily: 'PixelFont',
-    fontSize: normalize(12),
+    fontSize: normalize(14),
     letterSpacing: 1,
   },
   headerCaption: {

@@ -272,7 +272,7 @@ export default function ProgressScreen({ navigation }: any) {
       {/* ── HEADER ── */}
       <View style={ps.header}>
         <TouchableOpacity style={ps.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={ps.backBtnTxt}>←</Text>
+          <Text style={ps.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={ps.headerTitle}>PROGRESS</Text>
         <View style={ps.headerRight}>
@@ -410,11 +410,13 @@ const ps = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0c1525',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(5,12,24,0.92)',
+    borderTopWidth: bw(1),
     borderBottomWidth: bw(1),
-    borderBottomColor: '#bda05e',
+    borderColor: '#bda05e',
     paddingHorizontal: s(16),
-    paddingVertical: s(10),
+    paddingVertical: s(8),
     gap: s(12),
   },
   backBtn: {
@@ -427,10 +429,10 @@ const ps = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(10,15,25,0.9)',
   },
-  backBtnTxt: {
-    color: '#fff',
-    fontSize: s(16),
-    lineHeight: s(20),
+  backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'PixelFont',
+    fontSize: s(14),
   },
   headerTitle: {
     color: '#fff',
@@ -438,6 +440,7 @@ const ps = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 2,
     flex: 1,
+    fontFamily: 'PixelFont',
   },
   headerRight: {
     flexDirection: 'row',
@@ -446,11 +449,12 @@ const ps = StyleSheet.create({
   resBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderWidth: bw(1),
+    borderColor: '#bda05e',
+    borderRadius: s(999),
+    backgroundColor: '#bda05e18',
     paddingHorizontal: s(10),
-    paddingVertical: s(4),
-    borderRadius: s(12),
-    gap: s(4),
+    paddingVertical: s(6),
   },
   resBadgeIcon: { fontSize: s(12) },
   resBadgeTxt:  { color: '#fff', fontSize: s(11), fontWeight: 'bold' },
