@@ -11,7 +11,7 @@ import {
   StatusBar,
   Modal,
 } from 'react-native';
-import { MODULES } from './LessonsScreen';
+import { MODULES, syncModuleProgress } from './LessonsScreen';
 
 // ── Scaling ──────────────────────────────────────────────────────────────────
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -365,7 +365,14 @@ export default function ModuleDetailScreen({ route, navigation }: any) {
   };
 
   const markComplete = (lessonId: number) => {
-    setCompletedIds(prev => prev.includes(lessonId) ? prev : [...prev, lessonId]);
+    setCompletedIds((prev) => {
+      const next = prev.includes(lessonId) ? prev : [...prev, lessonId];
+      lessons.forEach((lesson) => {
+        lesson.completed = next.includes(lesson.id);
+      });
+      syncModuleProgress(moduleId, next);
+      return next;
+    });
   };
 
   const { accentColor } = module;

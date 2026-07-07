@@ -125,6 +125,15 @@ export const MODULES = [
   },
 ];
 
+export function syncModuleProgress(moduleId: number, completedLessonIds: number[]) {
+  const module = MODULES.find((entry) => entry.id === moduleId);
+  if (!module) return;
+
+  const completedCount = completedLessonIds.filter((lessonId) => lessonId >= 1 && lessonId <= module.totalLessons).length;
+  module.lessonsComplete = completedCount;
+  module.progress = Math.round((completedCount / module.totalLessons) * 100);
+}
+
 // ── Module Card ───────────────────────────────────────────────────────────────
 function ModuleCard({
   module,
@@ -266,6 +275,7 @@ export default function LessonsScreen({ navigation }: any) {
   const ls = useMemo(() => makeScreenStyles(s, bw, isCompact), [scaleKey, isCompact]);
 
   const [activeIdx, setActiveIdx] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -297,6 +307,14 @@ export default function LessonsScreen({ navigation }: any) {
       },
     })
   ).current;
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener?.('focus', () => {
+      setRefreshTick((value) => value + 1);
+    });
+
+    return () => unsubscribe?.();
+  }, [navigation]);
 
   const active = MODULES[activeIdx];
 
