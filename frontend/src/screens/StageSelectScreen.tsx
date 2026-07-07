@@ -7,6 +7,7 @@ import {
   Dimensions,
   PixelRatio,
   Modal,
+  Image,
   Animated,
 } from "react-native";
 
@@ -16,6 +17,10 @@ const scaleFactor = width / BASE_WIDTH;
 const normalize = (size: number) =>
   Math.round(PixelRatio.roundToNearestPixel(size * scaleFactor));
 const bw = (size: number) => Math.max(1, normalize(size));
+const officeIcon = require('../assets/office.png');
+const serverIcon = require('../assets/server.png');
+const homeIcon = require('../assets/home.png');
+
 
 import {
   ENEMIES_PER_STAGE,
@@ -49,32 +54,36 @@ type StageSelectScreenProps = {
 const BUILDINGS: {
   key: BuildingKey;
   name: string;
-  icon: string;
+  icon: any,
+  iconType: 'image' | 'emoji';
   color: string;
   buffLabel: (level: number) => string;
   cost: number;
 }[] = [
     {
       key: "tower",
-      name: "Tower Keep",
-      icon: "🏯",
+      name: "Office Room",
+      icon: officeIcon,
+      iconType: 'image',
       color: "#5ac8ff",
       buffLabel: (level) => `+${8 * level} DMG`,
       cost: 25,
     },
     {
       key: "glade",
-      name: "Forest Glade",
-      icon: "🌳",
+      name: "Server Room",
+      icon: serverIcon,
+      iconType: 'image',
       color: "#3fbf7f",
       buffLabel: (level) => `+${(0.5 * level).toFixed(1)} RANGE`,
       cost: 25,
     },
     {
       key: "forge",
-      name: "Arcane Forge",
-      icon: "⚒️",
-      color: "#7f6fff",
+      name: "Home Base",
+      icon: homeIcon,
+      iconType: 'image',
+      color: "#ed9129",
       buffLabel: (level) => `-${100 * level}ms CD`,
       cost: 25,
     },
@@ -175,9 +184,6 @@ export default function StageSelectScreen({
 
         <View style={styles.topBar}>
           <Text style={styles.moduleTitle}>{moduleName}</Text>
-          <Text style={styles.moduleSubtitle}>
-            {WAVES_PER_STAGE} WAVES · {ENEMIES_PER_STAGE} ENEMIES PER STAGE
-          </Text>
           <View style={styles.titleUnderline} />
         </View>
 
@@ -197,7 +203,7 @@ export default function StageSelectScreen({
                 style={[styles.buildingNode, !canAfford && styles.buildingNodeDisabled]}
                 activeOpacity={0.8}
                 onPress={() => {
-                   if (canAfford) onUpgradeBuilding(building.key);
+                  if (canAfford) onUpgradeBuilding(building.key);
                 }}
               >
                 <View
@@ -206,14 +212,29 @@ export default function StageSelectScreen({
                     { borderColor: building.color, shadowColor: building.color },
                   ]}
                 >
-                  <Text style={styles.buildingIcon}>{building.icon}</Text>
                   <View
                     style={[
-                      styles.levelBadge,
-                      { borderColor: building.color },
+                      styles.buildingGlow,
+                      { borderColor: building.color, shadowColor: building.color },
                     ]}
                   >
-                    <Text style={styles.levelBadgeText}>Lv.{level}</Text>
+                    {building.iconType === 'image' ? (
+                      <Image
+                        source={building.icon}
+                        style={styles.buildingIconImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.buildingIcon}>{building.icon}</Text>
+                    )}
+                    <View
+                      style={[
+                        styles.levelBadge,
+                        { borderColor: building.color },
+                      ]}
+                    >
+                      <Text style={styles.levelBadgeText}>Lv.{level}</Text>
+                    </View>
                   </View>
                 </View>
                 <Text style={styles.buildingName}>{building.name}</Text>
@@ -403,6 +424,10 @@ const styles = StyleSheet.create({
   },
   buildingIcon: {
     fontSize: normalize(34),
+  },
+  buildingIconImage: {
+    width: normalize(100),
+    height: normalize(100),
   },
   levelBadge: {
     position: "absolute",
