@@ -556,9 +556,9 @@ function makeStyles(width: number) {
       borderWidth: bw(2),
       borderColor: '#5a8aaa',
       borderRadius: normalize(8),
-      paddingVertical: normalize(14),
-      paddingHorizontal: normalize(24),
-      marginBottom: normalize(12), // Space between Store and the row below
+      paddingVertical: normalize(30),
+      paddingHorizontal: normalize(120),
+      marginBottom: normalize(12),
     },
     navButton: {
       backgroundColor: 'rgba(25, 50, 80, 0.9)',
@@ -581,9 +581,9 @@ function makeStyles(width: number) {
       marginRight: normalize(20),
     },
     modeIconRing: {
-      width: normalize(46),
-      height: normalize(46),
-      borderRadius: normalize(23),
+      width: normalize(60),
+      height: normalize(60),
+      borderRadius: normalize(50),
       borderWidth: bw(2),
       borderColor: '#ffd23f',
       backgroundColor: 'rgba(10, 15, 25, 0.9)',
@@ -592,7 +592,7 @@ function makeStyles(width: number) {
       marginBottom: normalize(6),
     },
     modeIcon: {
-      fontSize: normalize(18),
+      fontSize: normalize(25),
     },
     modeText: {
       color: '#ffffff',
@@ -613,8 +613,8 @@ function makeStyles(width: number) {
       elevation: 14,
     },
     deployButtonInner: {
-      paddingVertical: normalize(20),
-      paddingHorizontal: normalize(52),
+      paddingVertical: normalize(30),
+      paddingHorizontal: normalize(30),
       borderRadius: normalize(8),
       alignItems: 'center',
       justifyContent: 'center',

@@ -17,8 +17,8 @@ type ProgressionState = {
 };
 
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
-  materials: 1150,
-  threatPoints: 2400,
+  materials: 200,
+  threatPoints: 1000,
   highestUnlockedStage: 1,
   currentStage: 1,
   buildingLevels: { tower: 1, glade: 1, forge: 1 },
