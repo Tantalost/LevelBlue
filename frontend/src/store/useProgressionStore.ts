@@ -9,9 +9,11 @@ type ProgressionState = {
   highestUnlockedStage: number;
   currentStage: number;
   buildingLevels: BuildingLevels;
+  purchasedItems: string[];
   setCurrentStage: (stage: number) => void;
   upgradeBuilding: (building: BuildingKey) => boolean;
   applyStageClear: (clearedStage: number, materialsEarned: number, threatPointsEarned: number) => void;
+  purchaseStoreItem: (itemId: string, price: number) => boolean;
 };
 
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
@@ -20,6 +22,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   highestUnlockedStage: 1,
   currentStage: 1,
   buildingLevels: { tower: 1, glade: 1, forge: 1 },
+  purchasedItems: [],
 
   setCurrentStage: (stage) => set({ currentStage: stage }),
 
@@ -44,6 +47,17 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
       highestUnlockedStage: Math.max(highestUnlockedStage, clearedStage + 1),
       currentStage: Math.min(clearedStage + 1, 5),
     });
+  },
+
+  purchaseStoreItem: (itemId, price) => {
+    const { threatPoints, purchasedItems } = get();
+    if (purchasedItems.includes(itemId) || threatPoints < price) return false;
+
+    set({
+      threatPoints: threatPoints - price,
+      purchasedItems: [...purchasedItems, itemId],
+    });
+    return true;
   },
 }));
 

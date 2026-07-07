@@ -12,6 +12,7 @@ import {
   FlatList,
   Modal,
 } from 'react-native';
+import { useProgressionStore } from '../store/useProgressionStore';
 
 const { width, height } = Dimensions.get('window');
 const BASE_WIDTH = 932;
@@ -22,10 +23,13 @@ const bw = (size: number) => Math.max(1, normalize(size));
 
 export default function StoreScreen({ navigation }: any) {
   const [selectedCategory, setSelectedCategory] = useState<'TRENDING'|'PROFILES'|'BORDERS'>('TRENDING');
-  const [skulls, setSkulls] = useState<number>(2400);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [purchaseModal, setPurchaseModal] = useState(false);
   const [purchaseMessage, setPurchaseMessage] = useState('');
+
+  const threatPoints = useProgressionStore((state) => state.threatPoints);
+  const purchasedItems = useProgressionStore((state) => state.purchasedItems);
+  const purchaseStoreItem = useProgressionStore((state) => state.purchaseStoreItem);
 
   const items: Record<string, { id: string; name: string; price: number }[]> = {
     TRENDING: [
@@ -55,32 +59,22 @@ export default function StoreScreen({ navigation }: any) {
       >
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.topBarContainer}>
-            <View style={styles.leftHeader}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.backButtonText}>←</Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.backButtonText}>←</Text>
+            </TouchableOpacity>
+
+            <View style={styles.headerTextWrap}>
               <Text style={styles.headerTitle}>STORE</Text>
+              <Text style={styles.headerCaption}>Spend your threat points</Text>
             </View>
 
-            <View style={styles.topRightSection}>
-              <View style={styles.resourceItem}>
-                <Text style={styles.resourceIcon}>💀</Text>
-                <Text style={styles.resourceText}>2400</Text>
-              </View>
-              <View style={styles.resourceItem}>
-                <Text style={styles.resourceIcon}>🔧</Text>
-                <Text style={styles.resourceText}>1150</Text>
-              </View>
-              <TouchableOpacity style={styles.actionIconBtn}>
-                <Text style={styles.actionIcon}>✉️</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionIconBtn}>
-                <Text style={styles.actionIcon}>⚙️</Text>
-              </TouchableOpacity>
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>{threatPoints}</Text>
+              <Text style={styles.headerBadgeIcon}>💀</Text>
             </View>
           </View>
 
@@ -104,25 +98,33 @@ export default function StoreScreen({ navigation }: any) {
               contentContainerStyle={{ paddingTop: normalize(24) }}
               numColumns={2}
               columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: normalize(20) }}
-              renderItem={({ item }) => (
-                <View style={styles.itemCard}>
-                  <ImageBackground source={require('../assets/dashboard.png')} style={styles.itemBg} imageStyle={styles.cardImage}>
-                    <View style={styles.itemOverlay}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemPrice}>💀 {item.price}</Text>
-                      <TouchableOpacity
-                        style={styles.buyBtn}
-                        onPress={() => {
-                          setSelectedItem(item);
-                          setPurchaseModal(true);
-                        }}
-                      >
-                        <Text style={styles.buyBtnText}>BUY</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </ImageBackground>
-                </View>
-              )}
+              renderItem={({ item }) => {
+                const isOwned = purchasedItems.includes(item.id);
+
+                return (
+                  <View style={styles.itemCard}>
+                    <ImageBackground source={require('../assets/dashboard.png')} style={styles.itemBg} imageStyle={styles.cardImage}>
+                      <View style={styles.itemOverlay}>
+                        <Text style={styles.itemName}>{item.name}</Text>
+                        <Text style={styles.itemPrice}>💀 {item.price}</Text>
+                        <TouchableOpacity
+                          style={[styles.buyBtn, isOwned && styles.buyBtnOwned]}
+                          onPress={() => {
+                            if (isOwned) return;
+                            setSelectedItem(item);
+                            setPurchaseModal(true);
+                          }}
+                          disabled={isOwned}
+                        >
+                          <Text style={[styles.buyBtnText, isOwned && styles.buyBtnTextOwned]}>
+                            {isOwned ? 'OWNED' : 'BUY'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </ImageBackground>
+                  </View>
+                );
+              }}
             />
 
             <Modal
@@ -143,8 +145,15 @@ export default function StoreScreen({ navigation }: any) {
                     <TouchableOpacity
                       style={[styles.confirmButton, { marginRight: normalize(12) }]}
                       onPress={() => {
-                        if (selectedItem && skulls >= selectedItem.price) {
-                          setSkulls(skulls - selectedItem.price);
+                        if (!selectedItem) {
+                          setPurchaseModal(false);
+                          setSelectedItem(null);
+                          return;
+                        }
+
+                        if (purchasedItems.includes(selectedItem.id)) {
+                          setPurchaseMessage('Already owned');
+                        } else if (purchaseStoreItem(selectedItem.id, selectedItem.price)) {
                           setPurchaseMessage('Purchase successful');
                         } else {
                           setPurchaseMessage('Insufficient threat points');
@@ -208,10 +217,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: normalize(16),
     marginTop: normalize(20),
   },
-  leftHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerTextWrap: {
     flex: 1,
+    marginLeft: normalize(12),
   },
   backButton: {
     width: normalize(38),
@@ -235,33 +243,30 @@ const styles = StyleSheet.create({
     fontSize: normalize(12),
     letterSpacing: 1,
   },
-  topRightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerCaption: {
+    color: '#8aa8d0',
+    fontFamily: 'PixelFont',
+    fontSize: normalize(8),
+    marginTop: normalize(2),
   },
-  resourceItem: {
+  headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderWidth: bw(1),
+    borderColor: '#bda05e',
+    borderRadius: normalize(999),
+    backgroundColor: '#bda05e18',
     paddingHorizontal: normalize(10),
-    paddingVertical: normalize(4),
-    borderRadius: normalize(12),
-    marginLeft: normalize(12),
+    paddingVertical: normalize(6),
   },
-  resourceIcon: {
-    fontSize: normalize(12),
-  },
-  resourceText: {
+  headerBadgeText: {
     color: '#ffffff',
     fontFamily: 'PixelFont',
     fontSize: normalize(10),
-    marginLeft: normalize(6),
+    marginRight: normalize(4),
   },
-  actionIconBtn: {
-    marginLeft: normalize(16),
-  },
-  actionIcon: {
-    fontSize: normalize(16),
+  headerBadgeIcon: {
+    fontSize: normalize(10),
   },
   centerContent: {
     flex: 1,
@@ -373,10 +378,16 @@ const styles = StyleSheet.create({
     paddingVertical: normalize(8),
     borderRadius: normalize(8),
   },
+  buyBtnOwned: {
+    backgroundColor: '#1f3d2b',
+  },
   buyBtnText: {
     color: '#fff',
     fontFamily: 'PixelFont',
     fontSize: normalize(12),
+  },
+  buyBtnTextOwned: {
+    color: '#7ddf8d',
   },
   modalOverlayCenter: {
     flex: 1,
