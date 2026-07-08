@@ -206,7 +206,13 @@ function MessageDetailModal({
   onClose: () => void;
 }) {
   return (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+      onRequestClose={() => {}}
+    >
       <View style={md.overlay}>
         <View style={md.panel}>
           {/* Header */}
@@ -325,7 +331,13 @@ function ResultsOverlay({
   const win = foundIt && falsePos === 0;
 
   return (
-    <Modal transparent animationType="fade">
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+      onRequestClose={() => {}}
+    >
       <View style={ro.overlay}>
         <View style={ro.panel}>
           <Text style={ro.big}>{win ? '🏆' : '❌'}</Text>

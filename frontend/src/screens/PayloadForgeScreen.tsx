@@ -208,7 +208,13 @@ function ConfirmModal({
 }) {
   const r = ROUTING.find(rt => rt.id === routing)!;
   return (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+      onRequestClose={() => {}}
+    >
       <View style={cm.overlay}>
         <View style={cm.panel}>
           <Text style={cm.title}>⚔️  DEPLOY ATTACK?</Text>
@@ -289,7 +295,13 @@ const cm = StyleSheet.create({
 function SuccessModal({ routing, onClose }: { routing: string; onClose: () => void }) {
   const r = ROUTING.find(rt => rt.id === routing)!;
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+      onRequestClose={() => {}}
+    >
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', padding: s(24) }}>
         <View style={{ backgroundColor: '#080e1a', borderWidth: bw(2), borderColor: '#ff4466', borderRadius: s(20), padding: s(24), alignItems: 'center', gap: s(12) }}>
           <Text style={{ fontSize: s(52) }}>⚔️</Text>
