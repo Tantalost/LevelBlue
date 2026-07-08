@@ -14,7 +14,7 @@ import { TOWER_STATS } from '../constants/towers';
 import { WAVES_PER_STAGE } from '../constants/stages';
 import { useTowerDefense } from '../hooks/useTowerDefense';
 import type { CombatPayload } from '../types';
-import { useLandscapeScaling } from '../utils/scaling';
+import { useLandscapeScaling, normL, normP } from '../utils/scaling';
 
 type Props = {
   stage: number;
