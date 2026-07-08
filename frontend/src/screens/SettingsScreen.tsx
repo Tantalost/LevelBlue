@@ -376,6 +376,10 @@ export default function SettingsScreen({ navigation }: any) {
             style={styles.logoutButton} 
             onPress={() => {
               clearAuth();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
             }}
           >
             <Text style={styles.logoutButtonText}>LOGOUT</Text>
