@@ -7,13 +7,14 @@ import {
   SafeAreaView,
   Modal,
   LayoutChangeEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { BOARD_COLS, BOARD_ROWS, PATH_TILES } from '../constants/board';
 import { TOWER_STATS } from '../constants/towers';
 import { WAVES_PER_STAGE } from '../constants/stages';
 import { useTowerDefense } from '../hooks/useTowerDefense';
 import type { CombatPayload } from '../types';
-import { normL, normP } from '../utils/scaling';
+import { useLandscapeScaling } from '../utils/scaling';
 
 type Props = {
   stage: number;
@@ -24,11 +25,16 @@ type Props = {
 
 export default function TowerDefenseScreen({ stage, combat, onStageEnd, onExit }: Props) {
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [boardAreaSize, setBoardAreaSize] = useState({ width: 0, height: 0 });
+  const { lw, pw, nL, nP } = useLandscapeScaling();
+
   const td = useTowerDefense({
     stage,
     startingGold: combat.startingGold,
     startingBaseHealth: combat.baseHealth,
     towerBuffs: combat.towerBuffs,
+    containerW: boardAreaSize.width,
+    containerH: boardAreaSize.height,
   });
 
   const handleDefeat = () => onStageEnd(false);
@@ -36,39 +42,45 @@ export default function TowerDefenseScreen({ stage, combat, onStageEnd, onExit }
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.hudTop}>
-        <View style={styles.hudRow}>
+      <SafeAreaView style={[styles.hudTop, { paddingHorizontal: nL(12), paddingVertical: nL(6) }]}>
+        <View style={[styles.hudRow, { gap: nL(6) }]}>
           <View style={styles.hudGroup}>
-            <Text style={styles.hudGroupLabel}>BUDGET</Text>
-            <Text style={styles.hudStat}>{td.gold}g</Text>
+            <Text style={[styles.hudGroupLabel, { fontSize: nL(7) }]}>BUDGET</Text>
+            <Text style={[styles.hudStat, { fontSize: nL(11) }]}>{td.gold}g</Text>
           </View>
           <View style={styles.hudGroup}>
-            <Text style={styles.hudGroupLabel}>BASE</Text>
-            <Text style={styles.hudStat}>{td.baseHealth} HP</Text>
+            <Text style={[styles.hudGroupLabel, { fontSize: nL(7) }]}>BASE</Text>
+            <Text style={[styles.hudStat, { fontSize: nL(11) }]}>{td.baseHealth} HP</Text>
           </View>
-          <View style={styles.hudCenter}>
-            <View style={styles.waveBarTrack}>
+          <View style={[styles.hudCenter, { flex: 1 }]}>
+            <View style={[styles.waveBarTrack, { width: '80%', height: nL(7) }]}>
               <View style={[styles.waveBarFill, { width: `${td.waveProgress}%` as `${number}%` }]} />
             </View>
-            <Text style={styles.waveLabel}>
+            <Text style={[styles.waveLabel, { fontSize: nL(8) }]}>
               WAVE {Math.min(td.currentWave + 1, WAVES_PER_STAGE)} / {WAVES_PER_STAGE}
             </Text>
           </View>
-          <View style={styles.hudRight}>
-            <View style={styles.stagePill}>
-              <Text style={styles.stagePillText}>STG {stage}</Text>
+          <View style={[styles.hudRight, { gap: nL(8) }]}>
+            <View style={[styles.stagePill, { paddingHorizontal: nL(8), paddingVertical: nL(3) }]}>
+              <Text style={[styles.stagePillText, { fontSize: nL(11) }]}>STG {stage}</Text>
             </View>
             <TouchableOpacity
               onPress={() => setIsMenuVisible(true)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.cogIcon}>MENU</Text>
+              <Text style={[styles.cogIcon, { fontSize: nL(10) }]}>MENU</Text>
             </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
 
-      <View style={styles.boardArea}>
+      <View
+        style={styles.boardArea}
+        onLayout={(e: LayoutChangeEvent) => {
+          const { width, height } = e.nativeEvent.layout;
+          setBoardAreaSize({ width, height });
+        }}
+      >
         <View
           style={[styles.board, { width: td.boardW, height: td.boardH }]}
           onLayout={(e: LayoutChangeEvent) => {
@@ -202,22 +214,25 @@ export default function TowerDefenseScreen({ stage, combat, onStageEnd, onExit }
         </View>
       </View>
 
-      <SafeAreaView style={styles.hudBottom}>
-        <Text style={styles.msgText}>{td.message}</Text>
-        <View style={styles.deckRow}>
+      <SafeAreaView style={[styles.hudBottom, { paddingHorizontal: nL(12), paddingTop: nL(8), paddingBottom: nL(6) }]}>
+        <Text style={[styles.msgText, { fontSize: nL(8) }]}>{td.message}</Text>
+        <View style={[styles.deckRow, { gap: nL(10) }]}>
           <TouchableOpacity
-            style={[styles.card, td.selectedTowerType === 'basic' && styles.cardSelected]}
+            style={[styles.card,
+              { width: nL(52), height: nL(60) },
+              td.selectedTowerType === 'basic' && styles.cardSelected
+            ]}
             onPress={() => td.selectTower('basic')}
           >
-            <Text style={styles.cardEmoji}>T</Text>
-            <Text style={styles.cardCost}>{TOWER_STATS.basic.cost}g</Text>
+            <Text style={[styles.cardEmoji, { fontSize: nL(24) }]}>T</Text>
+            <Text style={[styles.cardCost, { fontSize: nL(9) }]}>{TOWER_STATS.basic.cost}g</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.startBtn, (td.gameOver || td.stageCleared) && styles.startBtnDisabled]}
             disabled={td.gameOver || td.stageCleared}
             onPress={() => td.setGameStarted((prev) => !prev)}
           >
-            <Text style={styles.startBtnText}>
+            <Text style={[styles.startBtnText, { fontSize: nL(13) }]}>
               {td.gameStarted ? 'PAUSE' : 'START BREACH'}
             </Text>
           </TouchableOpacity>

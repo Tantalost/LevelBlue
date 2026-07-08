@@ -18,6 +18,8 @@ type UseTowerDefenseOptions = {
   startingGold: number;
   startingBaseHealth: number;
   towerBuffs: TowerBuffs;
+  containerW?: number;
+  containerH?: number;
 };
 
 export function useTowerDefense({
@@ -25,6 +27,8 @@ export function useTowerDefense({
   startingGold,
   startingBaseHealth,
   towerBuffs,
+  containerW = 0,
+  containerH = 0,
 }: UseTowerDefenseOptions) {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -64,7 +68,17 @@ export function useTowerDefense({
   useEffect(() => { currentWaveRef.current = currentWave; }, [currentWave]);
   useEffect(() => { waveSpawnedRef.current = waveSpawned; }, [waveSpawned]);
 
-  const tileSize = useMemo(() => Math.floor((landscapeWidth * 0.6) / BOARD_COLS), []);
+  // Compute tileSize from actual available space if measured, else use landscapeWidth estimate
+  const tileSize = useMemo(() => {
+    if (containerW > 0 && containerH > 0) {
+      // Fit board to available container with a small padding
+      const tileByCols = Math.floor((containerW - 8) / BOARD_COLS);
+      const tileByRows = Math.floor((containerH - 8) / BOARD_ROWS);
+      return Math.max(16, Math.min(tileByCols, tileByRows));
+    }
+    // Fallback before first layout measurement
+    return Math.floor((landscapeWidth * 0.6) / BOARD_COLS);
+  }, [containerW, containerH]);
   const pathPoints = useMemo(() => buildPathPoints(tileSize), [tileSize]);
   const pathLength = useMemo(() => getPathLength(tileSize), [tileSize]);
   const boardW = tileSize * BOARD_COLS;

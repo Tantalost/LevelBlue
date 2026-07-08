@@ -49,6 +49,17 @@ export default function DashboardScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
   const displayName = useMemo(() => formatProfileName(user?.name), [user?.name]);
 
+  // At-Risk detection: BKT average P(L) < 0.40
+  const { isAtRisk, avgBkt, weakTopics } = useMemo(() => {
+    const m = user?.mastery;
+    if (!m) return { isAtRisk: false, avgBkt: 0, weakTopics: [] };
+    const entries = Object.entries(m) as [string, number][];
+    if (entries.length === 0) return { isAtRisk: false, avgBkt: 0, weakTopics: [] };
+    const avg = entries.reduce((s, [, v]) => s + v, 0) / entries.length;
+    const weak = entries.filter(([, v]) => v < 0.40).map(([k]) => k);
+    return { isAtRisk: avg < 0.40, avgBkt: avg, weakTopics: weak };
+  }, [user?.mastery]);
+
   const [selectedMode, setSelectedMode] = useState<'SOLO' | 'PVP'>('SOLO');
   const [modeModalVisible, setModeModalVisible] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(2);
@@ -168,6 +179,22 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
             </View>
           </View>
+
+          {/* ================= AT-RISK WARNING BANNER ================= */}
+          {isAtRisk && (
+            <View style={styles.atRiskBanner}>
+              <Text style={styles.atRiskIcon}>⚠</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.atRiskTitle}>PERFORMANCE ALERT — AT-RISK STATUS</Text>
+                <Text style={styles.atRiskSub}>
+                  Your avg. BKT P(L) is {(avgBkt * 100).toFixed(1)}%.{weakTopics.length > 0 ? ` Weakest: ${weakTopics.join(', ')}.` : ''} A peer mentor has been dispatched to help.
+                </Text>
+              </View>
+              <View style={styles.atRiskPill}>
+                <Text style={styles.atRiskPillTxt}>{(avgBkt * 100).toFixed(0)}%</Text>
+              </View>
+            </View>
+          )}
 
           {/* ================= BOTTOM SECTION ================= */}
           <View style={styles.bottomSection}>
@@ -885,6 +912,51 @@ function makeStyles(width: number) {
       fontSize: normalize(9),
       fontFamily: 'PixelFont',
       textAlign: 'center',
+    },
+    atRiskBanner: {
+      flexDirection: 'row',
+      backgroundColor: 'rgba(255, 68, 102, 0.1)',
+      borderWidth: 1,
+      borderColor: '#ff4466',
+      borderRadius: normalize(8),
+      padding: normalize(12),
+      marginHorizontal: normalize(20),
+      marginBottom: normalize(16),
+      alignItems: 'center',
+    },
+    atRiskIcon: {
+      color: '#ff4466',
+      fontSize: normalize(24),
+      marginRight: normalize(12),
+      shadowColor: '#ff4466',
+      shadowOpacity: 0.8,
+      shadowRadius: 10,
+    },
+    atRiskTitle: {
+      color: '#ff4466',
+      fontFamily: 'PixelFont',
+      fontSize: normalize(11),
+      letterSpacing: 1,
+      marginBottom: normalize(2),
+    },
+    atRiskSub: {
+      color: '#ffaaaa',
+      fontSize: normalize(9),
+      lineHeight: normalize(12),
+    },
+    atRiskPill: {
+      backgroundColor: 'rgba(255, 68, 102, 0.2)',
+      borderWidth: 1,
+      borderColor: '#ff4466',
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(4),
+      borderRadius: normalize(12),
+      marginLeft: normalize(12),
+    },
+    atRiskPillTxt: {
+      color: '#ff4466',
+      fontFamily: 'PixelFont',
+      fontSize: normalize(12),
     },
   });
 }
