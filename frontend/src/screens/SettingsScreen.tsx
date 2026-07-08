@@ -12,6 +12,7 @@ import {
   PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthStore } from '../store/useAuthStore';
 
 const BASE_WIDTH = 932;
 
@@ -157,12 +158,29 @@ function makeStyles(width: number) {
       fontFamily: 'PixelFont',
       marginTop: normalize(4),
     },
+    logoutButton: {
+      backgroundColor: 'rgba(255, 68, 102, 0.1)',
+      borderWidth: 2,
+      borderColor: '#ff4466',
+      borderRadius: normalize(8),
+      paddingVertical: normalize(16),
+      alignItems: 'center',
+      marginTop: normalize(20),
+      marginBottom: normalize(40),
+    },
+    logoutButtonText: {
+      color: '#ff4466',
+      fontFamily: 'PixelFont',
+      fontSize: normalize(14),
+      letterSpacing: 2,
+    },
   });
 }
 
 export default function SettingsScreen({ navigation }: any) {
   const { width } = useWindowDimensions();
   const styles = makeStyles(width);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
 
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(true);
@@ -352,6 +370,16 @@ export default function SettingsScreen({ navigation }: any) {
               <Toggle enabled={false} onToggle={() => {}} />
             </View>
           </View>
+          
+          {/* LOGOUT */}
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={() => {
+              clearAuth();
+            }}
+          >
+            <Text style={styles.logoutButtonText}>LOGOUT</Text>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     </View>
