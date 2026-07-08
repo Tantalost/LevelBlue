@@ -32,6 +32,7 @@ interface Lesson {
     description: string;
     task: string;
     hint: string;
+    kind?: 'inbox' | 'headers' | 'placeholder';
   };
   completed: boolean;
 }
@@ -52,6 +53,7 @@ const MODULE_LESSONS: Record<number, Lesson[]> = {
         description: 'You have received 5 emails in your inbox. Identify which ones are phishing attempts.',
         task: 'Carefully examine each email\'s sender, subject line, links, and content. Flag all phishing emails before clicking "Submit".',
         hint: 'Look for mismatched domains — e.g. support@paypa1.com vs paypal.com',
+        kind: 'inbox',
       },
       completed: true,
     },
@@ -69,6 +71,7 @@ const MODULE_LESSONS: Record<number, Lesson[]> = {
         description: 'Examine the raw email headers of 3 suspicious messages to determine if they are spoofed.',
         task: 'Open each email\'s header panel and check whether the "From" domain matches the "Return-Path" and "DKIM-Signature" domains.',
         hint: 'A mismatch between the visible sender and the Return-Path header is a strong spoofing indicator.',
+        kind: 'headers',
       },
       completed: true,
     },
@@ -86,6 +89,7 @@ const MODULE_LESSONS: Record<number, Lesson[]> = {
         description: 'You have a list of URLs extracted from flagged emails. Classify each as Safe or Malicious.',
         task: 'Analyze the domain, path, and parameters of each URL. Use the provided WHOIS lookup tool to check registration dates and ownership.',
         hint: 'Newly registered domains (< 30 days old) combined with financial keywords are extremely suspicious.',
+        kind: 'placeholder',
       },
       completed: true,
     },
@@ -104,6 +108,7 @@ const MODULE_LESSONS: Record<number, Lesson[]> = {
         description: 'You are the CFO\'s assistant. Three urgent emails arrive from the "CEO" while he is overseas.',
         task: 'Determine which emails are legitimate by checking headers, verifying the request via a phone call, and cross-referencing the CEO\'s known travel schedule.',
         hint: 'Real executives rarely request urgent wire transfers exclusively via email with no prior discussion.',
+        kind: 'placeholder',
       },
       completed: true,
     },
@@ -121,6 +126,7 @@ const MODULE_LESSONS: Record<number, Lesson[]> = {
         description: 'A colleague has clicked a phishing link and is panicking. Walk through the proper response steps.',
         task: 'Complete all 7 response steps in the correct order using the incident response checklist provided. Time is critical — you have 5 minutes.',
         hint: 'Isolate the affected machine from the network FIRST before any other action.',
+        kind: 'placeholder',
       },
       completed: false,
     },
@@ -156,13 +162,109 @@ const MODULE_LESSONS: Record<number, Lesson[]> = {
 };
 
 // ── Simulation Modal ──────────────────────────────────────────────────────────
+type InboxEmail = {
+  id: string;
+  fromName: string;
+  fromEmail: string;
+  subject: string;
+  preview: string;
+  linkLabel?: string;
+  linkUrl?: string;
+  hasAttachment?: boolean;
+  isPhish: boolean;
+};
+
+type HeaderEmail = {
+  id: string;
+  visibleFrom: string;
+  returnPath: string;
+  dkimDomain: string;
+  isSpoofed: boolean;
+};
+
+const MODULE1_LESSON1_EMAILS: InboxEmail[] = [
+  {
+    id: 'm1l1-e1',
+    fromName: 'PayPal Support',
+    fromEmail: 'support@paypa1.com',
+    subject: 'URGENT: Your account is limited — verify now',
+    preview: 'We noticed unusual activity. Verify your account within 2 hours to avoid suspension.',
+    linkLabel: 'Verify Account',
+    linkUrl: 'https://paypa1.com/secure/login',
+    isPhish: true,
+  },
+  {
+    id: 'm1l1-e2',
+    fromName: 'LevelBlue Classroom',
+    fromEmail: 'no-reply@levelblue.edu',
+    subject: 'Schedule update: Thursday session moved to 10:00 AM',
+    preview: 'Your instructor updated the session schedule. No action required.',
+    isPhish: false,
+  },
+  {
+    id: 'm1l1-e3',
+    fromName: 'IT Helpdesk',
+    fromEmail: 'helpdesk@levelblue-it.com',
+    subject: 'Password Expiration Notice',
+    preview: 'Your password expires today. Reset it now to keep access.',
+    linkLabel: 'Reset Password',
+    linkUrl: 'https://levelblue-it.com/reset',
+    isPhish: true,
+  },
+  {
+    id: 'm1l1-e4',
+    fromName: 'Microsoft 365',
+    fromEmail: 'security@microsoft.com',
+    subject: 'Unusual sign-in activity detected',
+    preview: 'We blocked a sign-in attempt. If this was you, review your recent activity.',
+    linkLabel: 'Review activity',
+    linkUrl: 'https://account.microsoft.com/security',
+    isPhish: false,
+  },
+  {
+    id: 'm1l1-e5',
+    fromName: 'Shipping Dept',
+    fromEmail: 'shipping@levelblue.edu',
+    subject: 'Package delivery failed — see attached',
+    preview: 'Delivery failed. Please open the attached form to reschedule.',
+    hasAttachment: true,
+    isPhish: true,
+  },
+];
+
+const MODULE1_LESSON2_HEADERS: HeaderEmail[] = [
+  {
+    id: 'm1l2-h1',
+    visibleFrom: 'Billing Team <billing@levelblue.edu>',
+    returnPath: '<billing@levelblue.edu>',
+    dkimDomain: 'levelblue.edu',
+    isSpoofed: false,
+  },
+  {
+    id: 'm1l2-h2',
+    visibleFrom: 'Microsoft Security <security@microsoft.com>',
+    returnPath: '<bounce@micros0ft-support.net>',
+    dkimDomain: 'micros0ft-support.net',
+    isSpoofed: true,
+  },
+  {
+    id: 'm1l2-h3',
+    visibleFrom: 'PayPal <service@paypal.com>',
+    returnPath: '<service@paypal.com.attacker.net>',
+    dkimDomain: 'attacker.net',
+    isSpoofed: true,
+  },
+];
+
 function SimulationModal({
+  moduleId,
   lesson,
   accentColor,
   onClose,
   onComplete,
   visible,
 }: {
+  moduleId: number;
   lesson: Lesson;
   accentColor: string;
   onClose: () => void;
@@ -170,12 +272,66 @@ function SimulationModal({
   visible: boolean;
 }) {
   const [phase, setPhase] = useState<'brief' | 'task' | 'done'>('brief');
+  const [taskError, setTaskError] = useState('');
+  const [taskScore, setTaskScore] = useState<{ correct: number; total: number } | null>(null);
+  const [taskPassed, setTaskPassed] = useState<boolean | null>(null);
+
+  const [inboxFlags, setInboxFlags] = useState<Record<string, boolean>>({});
+  const [headerFlags, setHeaderFlags] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!visible) {
       setPhase('brief');
+      setTaskError('');
+      setTaskScore(null);
+      setTaskPassed(null);
+      setInboxFlags({});
+      setHeaderFlags({});
     }
   }, [visible]);
+
+  const simKind =
+    lesson.simulation.kind ??
+    (moduleId === 1 && lesson.id === 1 ? 'inbox' : moduleId === 1 && lesson.id === 2 ? 'headers' : 'placeholder');
+
+  const submitTask = () => {
+    setTaskError('');
+
+    if (simKind === 'inbox') {
+      const emails = MODULE1_LESSON1_EMAILS;
+      const total = emails.length;
+      let correct = 0;
+      for (const e of emails) {
+        const flagged = !!inboxFlags[e.id];
+        if ((e.isPhish && flagged) || (!e.isPhish && !flagged)) correct += 1;
+      }
+      const passed = correct >= 4;
+      setTaskScore({ correct, total });
+      setTaskPassed(passed);
+      setPhase('done');
+      return;
+    }
+
+    if (simKind === 'headers') {
+      const rows = MODULE1_LESSON2_HEADERS;
+      const total = rows.length;
+      let correct = 0;
+      for (const r of rows) {
+        const markedSpoofed = !!headerFlags[r.id];
+        if ((r.isSpoofed && markedSpoofed) || (!r.isSpoofed && !markedSpoofed)) correct += 1;
+      }
+      const passed = correct >= 3;
+      setTaskScore({ correct, total });
+      setTaskPassed(passed);
+      setPhase('done');
+      return;
+    }
+
+    // Placeholder simulations: treat as pass (demo-only) once "Submit" is pressed.
+    setTaskScore({ correct: 1, total: 1 });
+    setTaskPassed(true);
+    setPhase('done');
+  };
 
   return (
     <Modal
@@ -222,20 +378,94 @@ function SimulationModal({
 
             {phase === 'task' && (
               <>
-                <View style={sm.vmBox}>
-                  <View style={sm.vmTitleBar}>
-                    <View style={sm.vmDot} /><View style={sm.vmDot} /><View style={sm.vmDot} />
-                    <Text style={sm.vmTitle}>Virtual Machine — Level Blue OS</Text>
+                {taskError ? <Text style={sm.errText}>{taskError}</Text> : null}
+
+                {simKind === 'inbox' && (
+                  <View style={sm.labBox}>
+                    <View style={sm.vmTitleBar}>
+                      <View style={sm.vmDot} /><View style={sm.vmDot} /><View style={sm.vmDot} />
+                      <Text style={sm.vmTitle}>Inbox — Flag Phishing</Text>
+                    </View>
+                    {MODULE1_LESSON1_EMAILS.map((e) => {
+                      const flagged = !!inboxFlags[e.id];
+                      return (
+                        <View key={e.id} style={sm.emailRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={sm.emailFrom} numberOfLines={1}>
+                              {e.fromName} <Text style={sm.emailFromDim}>{`<${e.fromEmail}>`}</Text>
+                            </Text>
+                            <Text style={sm.emailSubject} numberOfLines={1}>{e.subject}</Text>
+                            <Text style={sm.emailPreview} numberOfLines={2}>{e.preview}</Text>
+                            {(e.linkLabel && e.linkUrl) ? (
+                              <Text style={sm.emailMeta} numberOfLines={1}>
+                                Link: <Text style={sm.emailLink}>{e.linkLabel}</Text> · {e.linkUrl}
+                              </Text>
+                            ) : null}
+                            {e.hasAttachment ? <Text style={sm.emailMeta}>Attachment: 📎 invoice.zip</Text> : null}
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => setInboxFlags((p) => ({ ...p, [e.id]: !flagged }))}
+                            style={[
+                              sm.flagBtn,
+                              flagged ? sm.flagBtnOn : sm.flagBtnOff,
+                            ]}
+                          >
+                            <Text style={sm.flagBtnTxt}>{flagged ? 'FLAGGED' : 'SAFE'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
                   </View>
-                  <Text style={sm.vmContent}>
-                    {'> Simulation environment loaded...\n> Assets ready.\n> Your task is displayed above.\n\n[This is a placeholder for the interactive\nsimulation widget that will be\nintegrated in the next sprint.]\n\n> Complete the task and press SUBMIT.'}
-                  </Text>
-                </View>
+                )}
+
+                {simKind === 'headers' && (
+                  <View style={sm.labBox}>
+                    <View style={sm.vmTitleBar}>
+                      <View style={sm.vmDot} /><View style={sm.vmDot} /><View style={sm.vmDot} />
+                      <Text style={sm.vmTitle}>Header Panel — Mark Spoofed</Text>
+                    </View>
+                    {MODULE1_LESSON2_HEADERS.map((h) => {
+                      const spoofed = !!headerFlags[h.id];
+                      return (
+                        <View key={h.id} style={sm.headerRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={sm.hLabel}>From</Text>
+                            <Text style={sm.hValue} numberOfLines={1}>{h.visibleFrom}</Text>
+                            <Text style={sm.hLabel}>Return-Path</Text>
+                            <Text style={sm.hValue} numberOfLines={1}>{h.returnPath}</Text>
+                            <Text style={sm.hLabel}>DKIM</Text>
+                            <Text style={sm.hValue} numberOfLines={1}>{h.dkimDomain}</Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => setHeaderFlags((p) => ({ ...p, [h.id]: !spoofed }))}
+                            style={[sm.flagBtn, spoofed ? sm.flagBtnOn : sm.flagBtnOff]}
+                          >
+                            <Text style={sm.flagBtnTxt}>{spoofed ? 'SPOOFED' : 'LEGIT'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                    <Text style={sm.smallHint}>Rule: If visible From domain differs from Return-Path / DKIM domain, mark as SPOOFED.</Text>
+                  </View>
+                )}
+
+                {simKind === 'placeholder' && (
+                  <View style={sm.vmBox}>
+                    <View style={sm.vmTitleBar}>
+                      <View style={sm.vmDot} /><View style={sm.vmDot} /><View style={sm.vmDot} />
+                      <Text style={sm.vmTitle}>Virtual Machine — Level Blue OS</Text>
+                    </View>
+                    <Text style={sm.vmContent}>
+                      {"> Simulation environment loaded...\n> Assets ready.\n\nThis lesson's interactive widget is coming soon.\nFor this demo build, press SUBMIT to continue."}
+                    </Text>
+                  </View>
+                )}
+
                 <TouchableOpacity
                   style={[sm.actionBtn, { borderColor: '#3fbf7f', backgroundColor: '#3fbf7f22', marginTop: s(16) }]}
-                  onPress={() => setPhase('done')}
+                  onPress={submitTask}
                 >
-                  <Text style={[sm.actionBtnTxt, { color: '#3fbf7f' }]}>✓  SUBMIT ANSWERS</Text>
+                  <Text style={[sm.actionBtnTxt, { color: '#3fbf7f' }]}>✓  SUBMIT</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -244,16 +474,33 @@ function SimulationModal({
               <>
                 <View style={sm.doneBox}>
                   <Text style={sm.doneEmoji}>🏆</Text>
-                  <Text style={sm.doneTxt}>Simulation Passed!</Text>
-                  <Text style={sm.doneSub}>You have demonstrated the required skill for this lesson.</Text>
-                  <Text style={[sm.doneXP, { color: accentColor }]}>+80 XP</Text>
+                  <Text style={sm.doneTxt}>{taskPassed ? 'Simulation Passed!' : 'Simulation Failed'}</Text>
+                  {taskScore ? (
+                    <Text style={sm.doneSub}>
+                      Score: {taskScore.correct}/{taskScore.total} · {taskPassed ? 'Proceed to the next lesson.' : 'Retry to unlock progression.'}
+                    </Text>
+                  ) : (
+                    <Text style={sm.doneSub}>
+                      {taskPassed ? 'You have demonstrated the required skill for this lesson.' : 'You need a higher score to pass.'}
+                    </Text>
+                  )}
+                  <Text style={[sm.doneXP, { color: accentColor }]}>{taskPassed ? '+80 XP' : '+0 XP'}</Text>
                 </View>
-                <TouchableOpacity
-                  style={[sm.actionBtn, { borderColor: accentColor, backgroundColor: accentColor + '22' }]}
-                  onPress={() => { onComplete(); onClose(); }}
-                >
-                  <Text style={[sm.actionBtnTxt, { color: accentColor }]}>▶  CONTINUE TO NEXT LESSON</Text>
-                </TouchableOpacity>
+                {taskPassed ? (
+                  <TouchableOpacity
+                    style={[sm.actionBtn, { borderColor: accentColor, backgroundColor: accentColor + '22' }]}
+                    onPress={() => { onComplete(); onClose(); }}
+                  >
+                    <Text style={[sm.actionBtnTxt, { color: accentColor }]}>▶  CONTINUE TO NEXT LESSON</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[sm.actionBtn, { borderColor: accentColor, backgroundColor: accentColor + '22' }]}
+                    onPress={() => { setPhase('task'); setTaskError(''); }}
+                  >
+                    <Text style={[sm.actionBtnTxt, { color: accentColor }]}>↻  RETRY SIMULATION</Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
           </ScrollView>
@@ -330,6 +577,52 @@ const sm = StyleSheet.create({
     padding: s(14),
     lineHeight: s(18),
   },
+  errText: { color: '#ff6363', marginBottom: s(10), fontSize: s(12), fontWeight: '700' },
+  smallHint: { color: '#5a7aaa', fontSize: s(10), marginTop: s(10), lineHeight: s(14) },
+
+  labBox: {
+    backgroundColor: '#030609',
+    borderRadius: s(10),
+    overflow: 'hidden',
+    borderWidth: bw(1),
+    borderColor: '#1e3050',
+  },
+  emailRow: {
+    flexDirection: 'row',
+    gap: s(10),
+    padding: s(12),
+    borderTopWidth: bw(1),
+    borderTopColor: '#111e30',
+  },
+  emailFrom: { color: '#e8f0ff', fontSize: s(12), fontWeight: '700' },
+  emailFromDim: { color: '#5a7aaa', fontSize: s(10), fontWeight: '700' },
+  emailSubject: { color: '#ffcf5c', fontSize: s(11), marginTop: s(2), fontWeight: '700' },
+  emailPreview: { color: '#b0c8f0', fontSize: s(11), marginTop: s(4), lineHeight: s(16) },
+  emailMeta: { color: '#5a7aaa', fontSize: s(10), marginTop: s(4) },
+  emailLink: { color: '#5ac8ff', fontWeight: '800' },
+
+  headerRow: {
+    flexDirection: 'row',
+    gap: s(10),
+    padding: s(12),
+    borderTopWidth: bw(1),
+    borderTopColor: '#111e30',
+  },
+  hLabel: { color: '#5a7aaa', fontSize: s(9), marginTop: s(4) },
+  hValue: { color: '#e8f0ff', fontSize: s(11), fontFamily: 'monospace' },
+
+  flagBtn: {
+    width: s(82),
+    height: s(40),
+    borderRadius: s(10),
+    borderWidth: bw(1),
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+  },
+  flagBtnOn: { backgroundColor: '#220d10', borderColor: '#ff6363' },
+  flagBtnOff: { backgroundColor: '#0d2218', borderColor: '#3fbf7f' },
+  flagBtnTxt: { color: '#fff', fontSize: s(10), fontWeight: '900', letterSpacing: 1 },
 
   actionBtn: {
     borderWidth: bw(1.5),
@@ -508,6 +801,7 @@ export default function ModuleDetailScreen({ route, navigation }: any) {
       {/* Simulation Modal */}
       <SimulationModal
         visible={simOpen}
+        moduleId={moduleId}
         lesson={selectedLesson}
         accentColor={accentColor}
         onClose={() => setSimOpen(false)}
