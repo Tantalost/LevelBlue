@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   PixelRatio,
   useWindowDimensions,
   ScrollView,
+  PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -138,6 +139,18 @@ function makeStyles(width: number) {
       height: '100%',
       backgroundColor: '#5ac8ff',
     },
+    sliderKnob: {
+      position: 'absolute',
+      width: normalize(14),
+      height: normalize(14),
+      borderRadius: normalize(7),
+      backgroundColor: '#ffffff',
+      borderWidth: bw(2),
+      borderColor: '#3a6a8a',
+      top: '50%',
+      marginTop: normalize(-7),
+      marginLeft: normalize(-7),
+    },
     sliderValue: {
       color: '#5ac8aaa',
       fontSize: normalize(10),
@@ -168,14 +181,55 @@ export default function SettingsScreen({ navigation }: any) {
     </TouchableOpacity>
   );
 
-  const Slider = ({ value, label }: { value: number; label: string }) => (
-    <View style={styles.sliderContainer}>
-      <View style={styles.slider}>
-        <View style={[styles.sliderFill, { width: `${value}%` }]} />
+  const Slider = ({ value, label, onValueChange }: { value: number; label: string; onValueChange: (val: number) => void }) => {
+    const sliderWidthRef = useRef(0);
+    const onValueChangeRef = useRef(onValueChange);
+    const startValueRef = useRef(value);
+
+    onValueChangeRef.current = onValueChange;
+
+    const panResponder = useMemo(() => PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const width = sliderWidthRef.current;
+        if (width > 0) {
+          let newValue = (evt.nativeEvent.locationX / width) * 100;
+          newValue = Math.max(0, Math.min(100, Math.round(newValue)));
+          onValueChangeRef.current(newValue);
+          startValueRef.current = newValue; 
+        }
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const width = sliderWidthRef.current;
+        if (width > 0) {
+          let deltaValue = (gestureState.dx / width) * 100;
+          let newValue = startValueRef.current + deltaValue;
+          newValue = Math.max(0, Math.min(100, Math.round(newValue)));
+          onValueChangeRef.current(newValue);
+        }
+      },
+    }), []);
+
+    return (
+      <View style={styles.sliderContainer}>
+        <View 
+          style={{ height: 24, justifyContent: 'center' }}
+          onLayout={(e) => { sliderWidthRef.current = e.nativeEvent.layout.width; }}
+          {...panResponder.panHandlers}
+        >
+          <View pointerEvents="none" style={styles.slider}>
+            <View style={[styles.sliderFill, { width: `${value}%` }]} />
+          </View>
+          <View 
+            pointerEvents="none" 
+            style={[styles.sliderKnob, { left: `${value}%` }]} 
+          />
+        </View>
+        <Text style={styles.sliderValue}>{label}</Text>
       </View>
-      <Text style={styles.sliderValue}>{label}</Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -200,7 +254,7 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.settingLabel}>Master Volume</Text>
                 <Text style={styles.settingDescription}>Adjust overall game volume</Text>
               </View>
-              <Slider value={masterVolume} label={`${masterVolume}%`} />
+              <Slider value={masterVolume} label={`${masterVolume}%`} onValueChange={setMasterVolume} />
             </View>
 
             <View style={styles.settingItem}>
@@ -216,7 +270,7 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.settingLabel}>SFX Volume</Text>
                 <Text style={styles.settingDescription}>Sound effects volume level</Text>
               </View>
-              <Slider value={sfxVolume} label={`${sfxVolume}%`} />
+              <Slider value={sfxVolume} label={`${sfxVolume}%`} onValueChange={setSfxVolume} />
             </View>
 
             <View style={styles.settingItem}>

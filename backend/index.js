@@ -25,10 +25,14 @@ const mfaCache = new Map();
 app.use(cors());
 app.use(express.json());
 
-// Initialize Supabase Client
+// Initialize Supabase Client (anon key — for student auth operations)
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Service-role client — bypasses RLS for server-side bounty operations
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || supabaseKey;
+const serviceSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // --- API Endpoints ---
 
@@ -275,7 +279,152 @@ app.put('/api/students/:id/password-flag', async (req, res) => {
   }
 });
 
+// ─── JWT Auth Middleware ──────────────────────────────────────────────────────
+const authMiddleware = (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const token = header.split(' ')[1];
+    const jwtSecret = process.env.JWT_SECRET || 'supersecret_levelblue_key';
+    req.user = jwt.verify(token, jwtSecret);
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+};
+
+// ─── Support Bounties Routes ──────────────────────────────────────────────────
+const generateClearanceCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+// GET /api/bounties/student/:id
+app.get('/api/bounties/student/:id', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await serviceSupabase
+      .from('support_bounties')
+      .select('*, mentee:mentee_id (name, section), mentor:mentor_id (name, section)')
+      .or(`mentor_id.eq.${id},mentee_id.eq.${id}`)
+      .order('created_at', { ascending: false });
+    if (error) { if (error.code === '42P01') return res.json([]); throw error; }
+    res.json(data);
+  } catch (err) {
+    console.error('Fetch bounties error:', err);
+    res.status(500).json({ error: 'Server error fetching bounties' });
+  }
+});
+
+// POST /api/bounties
+app.post('/api/bounties', authMiddleware, async (req, res) => {
+  const { mentor_id, mentee_id, topics } = req.body;
+  if (!mentor_id || !mentee_id || !topics || topics.length === 0)
+    return res.status(400).json({ error: 'Missing required fields' });
+  const topic = topics[0];
+  try {
+    const { data, error } = await serviceSupabase
+      .from('support_bounties').insert({ mentor_id, mentee_id, topic, status: 'PENDING' })
+      .select().single();
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('Create bounty error:', err);
+    res.status(500).json({ error: 'Server error creating bounty' });
+  }
+});
+
+// MECHANIC 1a: PUT /api/bounties/:id/accept — generates OTP, AWAITING_LINK
+app.put('/api/bounties/:id/accept', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const clearanceCode = generateClearanceCode();
+  try {
+    const { data, error } = await serviceSupabase
+      .from('support_bounties')
+      .update({ status: 'AWAITING_LINK', clearance_code: clearanceCode, otp_verified: false })
+      .eq('id', id).select().single();
+    if (error) throw error;
+    // Do NOT return the code — mentor must get it from mentee
+    const { clearance_code: _, ...safeData } = data;
+    res.json(safeData);
+  } catch (err) {
+    console.error('Accept bounty error:', err);
+    res.status(500).json({ error: 'Server error accepting bounty' });
+  }
+});
+
+// MECHANIC 1b: POST /api/bounties/:id/verify-otp — mentor submits OTP
+app.post('/api/bounties/:id/verify-otp', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'Clearance code is required' });
+  try {
+    const { data: bounty, error: fetchErr } = await serviceSupabase
+      .from('support_bounties').select('*').eq('id', id).single();
+    if (fetchErr || !bounty) return res.status(404).json({ error: 'Bounty not found' });
+    if (bounty.clearance_code !== code.trim())
+      return res.status(400).json({ error: 'Invalid clearance code. Contact the mentee.' });
+    const { data, error } = await serviceSupabase
+      .from('support_bounties').update({ status: 'ACCEPTED', otp_verified: true })
+      .eq('id', id).select().single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Verify OTP error:', err);
+    res.status(500).json({ error: 'Server error verifying OTP' });
+  }
+});
+
+// MECHANIC 1c: GET /api/bounties/mentee-code/:bountyId — mentee fetches their code
+app.get('/api/bounties/mentee-code/:bountyId', authMiddleware, async (req, res) => {
+  const { bountyId } = req.params;
+  try {
+    const { data, error } = await serviceSupabase
+      .from('support_bounties')
+      .select('id, clearance_code, status, mentor:mentor_id (name), topic')
+      .eq('id', bountyId).single();
+    if (error || !data) return res.status(404).json({ error: 'Bounty not found' });
+    if (data.status !== 'AWAITING_LINK')
+      return res.status(400).json({ error: 'No active clearance code' });
+    res.json({ clearance_code: data.clearance_code, mentor_name: data.mentor?.name, topic: data.topic });
+  } catch (err) {
+    console.error('Get mentee code error:', err);
+    res.status(500).json({ error: 'Server error fetching clearance code' });
+  }
+});
+
+// MECHANIC 3a: PUT /api/bounties/:id/validate — mentee confirms → VALIDATED
+app.put('/api/bounties/:id/validate', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await serviceSupabase
+      .from('support_bounties').update({ status: 'VALIDATED', mentee_confirmed: true })
+      .eq('id', id).select().single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Validate bounty error:', err);
+    res.status(500).json({ error: 'Server error validating bounty' });
+  }
+});
+
+// MECHANIC 3b: PUT /api/bounties/:id/self-clear — mentee denies → SELF_CLEARED
+app.put('/api/bounties/:id/self-clear', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await serviceSupabase
+      .from('support_bounties').update({ status: 'SELF_CLEARED', mentee_confirmed: false })
+      .eq('id', id).select().single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Self-clear bounty error:', err);
+    res.status(500).json({ error: 'Server error self-clearing bounty' });
+  }
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`Backend server listening on port ${port}`);
 });
+
+

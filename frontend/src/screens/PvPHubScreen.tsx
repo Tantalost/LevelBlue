@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import {
   View,
   Text,
@@ -9,13 +11,16 @@ import {
   Dimensions,
   PixelRatio,
   StatusBar,
+  TextInput,
+  Alert,
+  Platform,
 } from 'react-native';
 
 // ── Scaling ──────────────────────────────────────────────────────────────────
 const { width: SW, height: SH } = Dimensions.get('window');
 const PW = Math.min(SW, SH);
 const PH = Math.max(SW, SH);
-const scaleP = Math.min(PW / 390, PH / 844, 1.0);
+const scaleP = Math.min(PW / 390, PH / 844, 1.0) * 0.85; // Scaled down for better fit
 const s  = (n: number) => Math.round(PixelRatio.roundToNearestPixel(n * scaleP));
 const bw = (n: number) => Math.max(1, s(n));
 
@@ -48,7 +53,93 @@ const StatPill = ({
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function PvPHubScreen({ navigation }: any) {
-  const [tab, setTab] = useState<'overview' | 'leaderboard'>('overview');
+  const [tab, setTab] = useState<'overview' | 'leaderboard' | 'communications'>('overview');
+  const [bounties, setBounties] = useState<any[]>([]);
+  const [userId, setUserId] = useState<string>('');
+  // OTP state: maps bountyId → entered code string
+  const [otpInputs, setOtpInputs] = useState<Record<string, string>>({});
+  const [otpLoading, setOtpLoading] = useState<Record<string, boolean>>({});
+  const [otpError, setOtpError] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchBounties = async () => {
+      try {
+        const userStr = await AsyncStorage.getItem('userData');
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          const id = u._id || u.id;
+          setUserId(id);
+          const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+          const token = Platform.OS === 'web'
+            ? await AsyncStorage.getItem('userToken')
+            : await SecureStore.getItemAsync('userToken');
+          const res = await fetch(`${apiUrl}/bounties/student/${id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setBounties(data);
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching bounties:', e);
+      }
+    };
+    fetchBounties();
+  }, [tab]);
+
+  // MECHANIC 1a: Accept bounty → backend generates OTP, status → AWAITING_LINK
+  const handleAcceptBounty = async (id: string) => {
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      const token = Platform.OS === 'web'
+        ? await AsyncStorage.getItem('userToken')
+        : await SecureStore.getItemAsync('userToken');
+      const res = await fetch(`${apiUrl}/bounties/${id}/accept`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBounties(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
+      }
+    } catch (e) {
+      console.error('Error accepting bounty:', e);
+    }
+  };
+
+  // MECHANIC 1b: Mentor submits OTP → status → ACCEPTED
+  const handleVerifyOtp = async (bountyId: string) => {
+    const code = otpInputs[bountyId]?.trim();
+    if (!code || code.length !== 4) {
+      setOtpError(prev => ({ ...prev, [bountyId]: 'Enter the 4-digit code.' }));
+      return;
+    }
+    setOtpLoading(prev => ({ ...prev, [bountyId]: true }));
+    setOtpError(prev => ({ ...prev, [bountyId]: '' }));
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      const token = Platform.OS === 'web'
+        ? await AsyncStorage.getItem('userToken')
+        : await SecureStore.getItemAsync('userToken');
+      const res = await fetch(`${apiUrl}/bounties/${bountyId}/verify-otp`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBounties(prev => prev.map(b => b.id === bountyId ? { ...b, ...data } : b));
+      } else {
+        setOtpError(prev => ({ ...prev, [bountyId]: data.error || 'Invalid code.' }));
+      }
+    } catch (e) {
+      setOtpError(prev => ({ ...prev, [bountyId]: 'Network error.' }));
+    } finally {
+      setOtpLoading(prev => ({ ...prev, [bountyId]: false }));
+    }
+  };
+
   const threatPoints = 2150;
 
   return (
@@ -76,14 +167,18 @@ export default function PvPHubScreen({ navigation }: any) {
       <View style={ph.roleBanner}>
         <View style={ph.roleHalf}>
           <Text style={ph.roleEmoji}>⚔️</Text>
-          <Text style={[ph.roleLabel, { color: '#ff4466' }]}>RED TEAM</Text>
-          <Text style={ph.roleSub}>Threat Actor</Text>
+          <View>
+            <Text style={[ph.roleLabel, { color: '#ff4466' }]}>RED TEAM</Text>
+            <Text style={ph.roleSub}>Threat Actor</Text>
+          </View>
         </View>
         <View style={ph.roleDivider} />
         <View style={ph.roleHalf}>
           <Text style={ph.roleEmoji}>🛡️</Text>
-          <Text style={[ph.roleLabel, { color: '#5ac8ff' }]}>BLUE TEAM</Text>
-          <Text style={ph.roleSub}>Defender</Text>
+          <View>
+            <Text style={[ph.roleLabel, { color: '#5ac8ff' }]}>BLUE TEAM</Text>
+            <Text style={ph.roleSub}>Defender</Text>
+          </View>
         </View>
       </View>
 
@@ -128,10 +223,10 @@ export default function PvPHubScreen({ navigation }: any) {
 
       {/* ── TAB BAR ── */}
       <View style={ph.tabBar}>
-        {(['overview', 'leaderboard'] as const).map((t) => (
+        {(['overview', 'leaderboard', 'communications'] as const).map((t) => (
           <TouchableOpacity key={t} style={ph.tabItem} onPress={() => setTab(t)}>
             <Text style={[ph.tabTxt, tab === t && ph.tabTxtActive]}>
-              {t === 'overview' ? '📊  ACTIVITY' : '🏆  LEADERBOARD'}
+              {t === 'overview' ? '📊  ACTIVITY' : t === 'leaderboard' ? '🏆  RANKS' : '📡  COMMS'}
             </Text>
             {tab === t && <View style={ph.tabUnderline} />}
           </TouchableOpacity>
@@ -206,6 +301,158 @@ export default function PvPHubScreen({ navigation }: any) {
           </View>
         )}
 
+        {tab === 'communications' && (
+          <View style={ph.section}>
+            <Text style={ph.sectionLabel}>ACTIVE SUPPORT BOUNTIES</Text>
+            {bounties.length === 0 ? (
+              <Text style={{ color: '#5a7aaa', fontSize: s(12), textAlign: 'center', marginTop: s(20) }}>
+                No active comms. Stand by for dispatch.
+              </Text>
+            ) : (
+              bounties.map(b => {
+                const isMentor = b.mentor_id === userId;
+                return (
+                  <View key={b.id} style={{
+                    backgroundColor: '#0c1525',
+                    borderWidth: bw(1.5),
+                    borderColor: b.status === 'PENDING' ? '#ffcf5c'
+                      : b.status === 'AWAITING_LINK' ? '#ff9f43'
+                      : b.status === 'ACCEPTED' ? '#5ac8ff'
+                      : b.status === 'VALIDATED' ? '#3fbf7f'
+                      : '#ff4466',
+                    borderRadius: s(8), padding: s(12), marginBottom: s(10)
+                  }}>
+
+                    {/* Header row */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s(8) }}>
+                      <Text style={{ fontSize: s(9), fontWeight: 'bold', color:
+                        b.status === 'PENDING' ? '#ffcf5c'
+                        : b.status === 'AWAITING_LINK' ? '#ff9f43'
+                        : b.status === 'ACCEPTED' ? '#5ac8ff'
+                        : b.status === 'VALIDATED' ? '#3fbf7f'
+                        : '#ff4466' }}>
+                        {b.status === 'PENDING' ? '⚠ AWAITING ACCEPTANCE'
+                          : b.status === 'AWAITING_LINK' ? '🔐 AWAITING LINK VERIFICATION'
+                          : b.status === 'ACCEPTED' ? '📡 SECURE CHANNEL OPEN'
+                          : b.status === 'VALIDATED' ? '✅ MISSION COMPLETE'
+                          : '❌ SELF-CLEARED'}
+                      </Text>
+                      <Text style={{ color: '#5a7aaa', fontSize: s(9) }}>
+                        {new Date(b.created_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+
+                    <Text style={{ color: '#e8f0ff', fontSize: s(13), fontWeight: 'bold', marginBottom: s(2) }}>
+                      {isMentor ? `Assist Agent ${b.mentee?.name}` : `Assistance from Agent ${b.mentor?.name}`}
+                    </Text>
+                    <Text style={{ color: '#5a7aaa', fontSize: s(11), marginBottom: s(10) }}>
+                      Topic Focus: <Text style={{ color: '#ff4466' }}>{b.topic}</Text>
+                    </Text>
+
+                    {/* ── MENTOR VIEWS ── */}
+
+                    {/* Mentor: PENDING → Accept button */}
+                    {isMentor && b.status === 'PENDING' && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#ffcf5c', paddingVertical: s(10), borderRadius: s(6), alignItems: 'center' }}
+                        onPress={() => handleAcceptBounty(b.id)}
+                      >
+                        <Text style={{ color: '#000', fontWeight: 'bold', fontSize: s(11) }}>ACCEPT BOUNTY</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Mentor: AWAITING_LINK → Enter OTP from mentee */}
+                    {isMentor && b.status === 'AWAITING_LINK' && (
+                      <View style={{ backgroundColor: '#ff9f4318', borderRadius: s(6), padding: s(10), borderWidth: bw(1), borderColor: '#ff9f4350' }}>
+                        <Text style={{ color: '#ff9f43', fontSize: s(10), fontWeight: 'bold', marginBottom: s(6) }}>
+                          🔐 ENTER MENTEE'S CLEARANCE CODE
+                        </Text>
+                        <Text style={{ color: '#5a7aaa', fontSize: s(10), marginBottom: s(8) }}>
+                          Contact {b.mentee?.name} and ask for their 4-digit code to confirm the link.
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: s(8), alignItems: 'center' }}>
+                          <TextInput
+                            style={{
+                              flex: 1, backgroundColor: '#0a1020', borderWidth: bw(1.5), borderColor: '#ff9f43',
+                              borderRadius: s(6), paddingHorizontal: s(12), paddingVertical: s(8),
+                              color: '#fff', fontSize: s(18), fontWeight: 'bold', textAlign: 'center', letterSpacing: 8
+                            }}
+                            placeholder="_ _ _ _"
+                            placeholderTextColor="#3a4a60"
+                            keyboardType="numeric"
+                            maxLength={4}
+                            value={otpInputs[b.id] || ''}
+                            onChangeText={text => setOtpInputs(prev => ({ ...prev, [b.id]: text }))}
+                          />
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#ff9f43', paddingVertical: s(10), paddingHorizontal: s(14), borderRadius: s(6) }}
+                            onPress={() => handleVerifyOtp(b.id)}
+                            disabled={otpLoading[b.id]}
+                          >
+                            <Text style={{ color: '#000', fontWeight: 'bold', fontSize: s(11) }}>
+                              {otpLoading[b.id] ? '...' : 'VERIFY'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {otpError[b.id] ? (
+                          <Text style={{ color: '#ff4466', fontSize: s(10), marginTop: s(6) }}>{otpError[b.id]}</Text>
+                        ) : null}
+                      </View>
+                    )}
+
+                    {/* Mentor: ACCEPTED → IRL instruction */}
+                    {isMentor && b.status === 'ACCEPTED' && (
+                      <View style={{ backgroundColor: '#5ac8ff18', padding: s(10), borderRadius: s(6), borderWidth: bw(1), borderColor: '#5ac8ff40' }}>
+                        <Text style={{ color: '#5ac8ff', fontSize: s(10), textAlign: 'center' }}>
+                          Link verified ✓ — Locate Agent {b.mentee?.name} (Sec: {b.mentee?.section}) and explain {b.topic}. The BKT engine will detect their improvement.
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* ── MENTEE VIEWS ── */}
+
+                    {/* Mentee: AWAITING_LINK → Show clearance code */}
+                    {!isMentor && b.status === 'AWAITING_LINK' && (
+                      <View style={{ backgroundColor: '#ff9f4318', borderRadius: s(6), padding: s(12), borderWidth: bw(1), borderColor: '#ff9f4350', alignItems: 'center' }}>
+                        <Text style={{ color: '#ff9f43', fontSize: s(10), fontWeight: 'bold', marginBottom: s(6) }}>🔐 YOUR CLEARANCE CODE</Text>
+                        <Text style={{ color: '#fff', fontSize: s(32), fontWeight: 'bold', letterSpacing: 12, marginBottom: s(6) }}>
+                          {b.clearance_code || '????'}
+                        </Text>
+                        <Text style={{ color: '#5a7aaa', fontSize: s(10), textAlign: 'center' }}>
+                          Share this code with Agent {b.mentor?.name} to confirm the link.
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Mentee: ACCEPTED → Stand by message */}
+                    {!isMentor && b.status === 'ACCEPTED' && (
+                      <View style={{ backgroundColor: '#3fbf7f18', padding: s(10), borderRadius: s(6), borderWidth: bw(1), borderColor: '#3fbf7f40' }}>
+                        <Text style={{ color: '#3fbf7f', fontSize: s(10), textAlign: 'center' }}>
+                          Agent {b.mentor?.name} has confirmed contact. Meet them and then replay the {b.topic} stage to prove your learning.
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Validated / Self-Cleared — final state */}
+                    {b.status === 'VALIDATED' && (
+                      <View style={{ backgroundColor: '#3fbf7f18', padding: s(8), borderRadius: s(6) }}>
+                        <Text style={{ color: '#3fbf7f', fontSize: s(10), textAlign: 'center', fontWeight: 'bold' }}>✅ BOUNTY VALIDATED — Mentor rewarded.</Text>
+                      </View>
+                    )}
+                    {b.status === 'SELF_CLEARED' && (
+                      <View style={{ backgroundColor: '#ff446618', padding: s(8), borderRadius: s(6) }}>
+                        <Text style={{ color: '#ff4466', fontSize: s(10), textAlign: 'center', fontWeight: 'bold' }}>❌ SELF-CLEARED — No mentor reward.</Text>
+                      </View>
+                    )}
+
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
+
         <View style={{ height: s(32) }} />
       </ScrollView>
     </SafeAreaView>
@@ -225,7 +472,7 @@ const ph = StyleSheet.create({
     borderBottomWidth: bw(1),
     borderColor: '#ff4466',
     paddingHorizontal: s(16),
-    paddingVertical: s(10),
+    paddingVertical: s(6),
     gap: s(10),
   },
   backBtn: {
@@ -258,43 +505,43 @@ const ph = StyleSheet.create({
     backgroundColor: '#0c1525',
     borderBottomWidth: bw(1),
     borderBottomColor: '#1e3050',
-    paddingVertical: s(10),
+    paddingVertical: s(6),
   },
-  roleHalf:   { flex: 1, alignItems: 'center', gap: s(2) },
+  roleHalf:   { flex: 1, alignItems: 'center', gap: s(8), flexDirection: 'row', justifyContent: 'center' },
   roleDivider: { width: bw(1), backgroundColor: '#1e3050' },
-  roleEmoji:  { fontSize: s(20) },
+  roleEmoji:  { fontSize: s(18) },
   roleLabel:  { fontSize: s(10), fontWeight: '900', letterSpacing: 2 },
-  roleSub:    { color: '#5a7aaa', fontSize: s(10) },
+  roleSub:    { color: '#5a7aaa', fontSize: s(9) },
 
   // Action cards
   actionRow: {
     flexDirection: 'row',
-    padding: s(14),
-    gap: s(12),
+    padding: s(10),
+    gap: s(10),
   },
   actionCard: {
     flex: 1,
     backgroundColor: '#0c1525',
     borderWidth: bw(2),
-    borderRadius: s(16),
-    padding: s(14),
+    borderRadius: s(12),
+    padding: s(10),
     alignItems: 'center',
-    gap: s(8),
+    gap: s(6),
     position: 'relative',
     overflow: 'hidden',
   },
   actionGlow: { ...StyleSheet.absoluteFillObject },
-  actionEmoji: { fontSize: s(34) },
-  actionTitle: { fontFamily: 'PixelFont', fontSize: s(11), letterSpacing: 1, textAlign: 'center' },
-  actionDesc:  { color: '#5a7aaa', fontSize: s(10), textAlign: 'center', lineHeight: s(15) },
+  actionEmoji: { fontSize: s(28) },
+  actionTitle: { fontFamily: 'PixelFont', fontSize: s(10), letterSpacing: 1, textAlign: 'center' },
+  actionDesc:  { color: '#5a7aaa', fontSize: s(9), textAlign: 'center', lineHeight: s(13) },
   actionCost: {
     borderWidth: bw(1), borderRadius: s(20),
-    paddingHorizontal: s(8), paddingVertical: s(3),
+    paddingHorizontal: s(8), paddingVertical: s(2),
   },
   actionCostTxt: { fontSize: s(8), fontWeight: '900', letterSpacing: 1 },
   actionCta: {
     width: '100%', borderWidth: bw(1.5),
-    borderRadius: s(10), paddingVertical: s(10), alignItems: 'center',
+    borderRadius: s(8), paddingVertical: s(8), alignItems: 'center',
   },
   actionCtaTxt: { fontSize: s(9), fontWeight: 'bold', letterSpacing: 1 },
 
@@ -305,7 +552,7 @@ const ph = StyleSheet.create({
     borderBottomColor: '#1e3050',
     backgroundColor: '#0c1525',
   },
-  tabItem:      { flex: 1, alignItems: 'center', paddingVertical: s(12) },
+  tabItem:      { flex: 1, alignItems: 'center', paddingVertical: s(10) },
   tabTxt:       { color: '#3a4a60', fontSize: s(10), fontWeight: 'bold' },
   tabTxtActive: { color: '#ff4466' },
   tabUnderline: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: bw(2), backgroundColor: '#ff4466' },

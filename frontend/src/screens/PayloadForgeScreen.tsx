@@ -16,7 +16,7 @@ import {
 const { width: SW, height: SH } = Dimensions.get('window');
 const PW = Math.min(SW, SH);
 const PH = Math.max(SW, SH);
-const scaleP = Math.min(PW / 390, PH / 844, 1.0);
+const scaleP = Math.min(PW / 390, PH / 844, 1.0) * 0.85;
 const s  = (n: number) => Math.round(PixelRatio.roundToNearestPixel(n * scaleP));
 const bw = (n: number) => Math.max(1, s(n));
 
@@ -109,7 +109,7 @@ function StepBar({ current, total }: { current: number; total: number }) {
   );
 }
 const sb = StyleSheet.create({
-  wrap: { flexDirection: 'row', gap: s(6), paddingHorizontal: s(20), paddingVertical: s(12) },
+  wrap: { flexDirection: 'row', gap: s(6), paddingHorizontal: s(20), paddingVertical: s(6) },
   seg: { flex: 1, height: s(4), borderRadius: s(2), backgroundColor: '#1e3050' },
   segDone:   { backgroundColor: '#ff446690' },
   segActive: { backgroundColor: '#ff4466' },
@@ -149,15 +149,15 @@ const ot = StyleSheet.create({
   tile: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#0c1525', borderWidth: bw(2),
-    borderRadius: s(14), padding: s(14), gap: s(12),
-    marginBottom: s(10), position: 'relative', overflow: 'hidden',
+    borderRadius: s(14), padding: s(10), gap: s(10),
+    marginBottom: s(8), position: 'relative', overflow: 'hidden',
   },
   tileGlow: { ...StyleSheet.absoluteFillObject },
   tileIcon:  { fontSize: s(28) },
   tileLabel: { color: '#e8f0ff', fontSize: s(14), fontWeight: 'bold', marginBottom: s(3) },
   tileDesc:  { color: '#5a7aaa', fontSize: s(11), lineHeight: s(16) },
   check: {
-    width: s(22), height: s(22), borderRadius: s(11),
+    width: s(18), height: s(18), borderRadius: s(9),
     borderWidth: bw(2), borderColor: '#1e3050',
     justifyContent: 'center', alignItems: 'center',
   },
@@ -189,7 +189,7 @@ const pp = StyleSheet.create({
   panel: {
     backgroundColor: '#080e1a',
     borderTopWidth: bw(1), borderTopColor: '#1e3050',
-    padding: s(12),
+    padding: s(8),
   },
   label: { color: '#ff4466', fontSize: s(9), fontWeight: '900', letterSpacing: 2, marginBottom: s(8) },
   grid:  { flexDirection: 'row', flexWrap: 'wrap', gap: s(6) },
@@ -457,7 +457,7 @@ const pf = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(5,12,24,0.95)',
     borderTopWidth: bw(1), borderBottomWidth: bw(1), borderColor: '#ff4466',
-    paddingHorizontal: s(16), paddingVertical: s(10), gap: s(10),
+    paddingHorizontal: s(16), paddingVertical: s(6), gap: s(10),
   },
   backBtn: {
     width: s(38), height: s(38), borderRadius: s(19),
@@ -476,7 +476,7 @@ const pf = StyleSheet.create({
 
   stepTitle: {
     flexDirection: 'row', alignItems: 'center',
-    gap: s(12), marginBottom: s(20),
+    gap: s(12), marginBottom: s(12),
   },
   stepIcon:  { fontSize: s(32) },
   stepLabel: { color: '#ff4466', fontSize: s(11), fontWeight: '900', letterSpacing: 2, marginBottom: s(4) },
@@ -485,8 +485,8 @@ const pf = StyleSheet.create({
   routeTile: {
     flexDirection: 'row', alignItems: 'flex-start',
     backgroundColor: '#0c1525', borderWidth: bw(2),
-    borderRadius: s(14), padding: s(16), gap: s(12),
-    marginBottom: s(12),
+    borderRadius: s(14), padding: s(12), gap: s(12),
+    marginBottom: s(8),
   },
   routeIcon:  { fontSize: s(28), marginTop: s(2) },
   routeLabel: { color: '#e8f0ff', fontSize: s(14), fontWeight: 'bold', marginBottom: s(4) },
@@ -499,17 +499,17 @@ const pf = StyleSheet.create({
 
   footer: {
     flexDirection: 'row', gap: s(12),
-    padding: s(14), borderTopWidth: bw(1), borderTopColor: '#1e3050',
+    padding: s(10), borderTopWidth: bw(1), borderTopColor: '#1e3050',
     backgroundColor: '#0c1525',
   },
   backFooterBtn: {
     flex: 1, borderWidth: bw(1.5), borderColor: '#1e3050',
-    borderRadius: s(12), paddingVertical: s(14), alignItems: 'center',
+    borderRadius: s(12), paddingVertical: s(10), alignItems: 'center',
   },
   backFooterTxt: { color: '#5a7aaa', fontWeight: 'bold', fontSize: s(12) },
   nextBtn: {
     flex: 2, backgroundColor: '#ff4466', borderRadius: s(12),
-    paddingVertical: s(14), alignItems: 'center',
+    paddingVertical: s(10), alignItems: 'center',
     shadowColor: '#ff4466', shadowOpacity: 0.6, shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 }, elevation: 8,
   },
