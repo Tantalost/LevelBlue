@@ -8,11 +8,14 @@ import {
   Dimensions,
   StatusBar,
   PixelRatio,
+  ScrollView,
 } from 'react-native';
+import { MODULES } from './LessonsScreen';
+import { useProgressionStore } from '../store/useProgressionStore';
 
 const { width, height } = Dimensions.get('window');
-const BASE_WIDTH = 932;
-const scaleFactor = width / BASE_WIDTH;
+const BASE_WIDTH = 390; // Reduced from 932 for better mobile scaling
+const scaleFactor = Math.min(width / BASE_WIDTH, 1.2); // Cap scaling to prevent oversized elements
 const normalize = (size: number) =>
   Math.round(PixelRatio.roundToNearestPixel(size * scaleFactor));
 const bw = (size: number) => Math.max(1, normalize(size));
@@ -53,6 +56,52 @@ const ObjectiveItem = ({ status, text }: { status: ObjectiveStatus, text: string
 };
 
 export default function MissionBriefingScreen({ navigation }: any) {
+  const currentStage = useProgressionStore((s) => s.currentStage);
+  const highestUnlockedStage = useProgressionStore((s) => s.highestUnlockedStage);
+  
+  // Determine current module based on stage progression
+  const currentModule = MODULES.find(m => m.unlocked) || MODULES[0];
+  const nextModule = MODULES.find(m => !m.unlocked);
+  
+  // Generate objectives based on progression
+  const getObjectives = () => {
+    const objectives: { status: ObjectiveStatus; text: string }[] = [];
+    
+    // Stage progression objectives
+    for (let i = 1; i <= 4; i++) {
+      if (i < currentStage) {
+        objectives.push({ status: 'completed', text: `Complete Stage ${i}` });
+      } else if (i === currentStage) {
+        objectives.push({ status: 'active', text: `Complete Stage ${i}` });
+      } else {
+        objectives.push({ status: 'pending', text: `Complete Stage ${i}` });
+      }
+    }
+    
+    // Stage 5 (requires lessons)
+    if (highestUnlockedStage >= 5) {
+      objectives.push({ status: 'completed', text: 'Complete Threat Intel Lessons 1-5' });
+      objectives.push({ status: currentStage === 5 ? 'active' : 'completed', text: 'Complete Stage 5 (Final Exam)' });
+    } else if (currentStage === 5) {
+      objectives.push({ status: 'active', text: 'Complete Threat Intel Lessons 1-5 to unlock Stage 5' });
+    } else {
+      objectives.push({ status: 'pending', text: 'Complete Threat Intel Lessons 1-5' });
+      objectives.push({ status: 'pending', text: 'Complete Stage 5 (Final Exam)' });
+    }
+    
+    // Next module unlock
+    if (nextModule) {
+      objectives.push({ status: 'pending', text: `Win Stage 5 to unlock Module ${nextModule.id}` });
+    }
+    
+    return objectives;
+  };
+  
+  const objectives = getObjectives();
+  const moduleProgress = currentModule.progress;
+  const completedLessons = currentModule.lessonsComplete;
+  const totalLessons = currentModule.totalLessons;
+
   return (
     <View style={styles.container}>
       <StatusBar hidden />
@@ -86,33 +135,32 @@ export default function MissionBriefingScreen({ navigation }: any) {
         </View>
 
         {/* === HEADER & PROGRESS === */}
-        <View style={styles.mainContent}>
-           <Text style={styles.moduleText}>MODULE 1</Text>
-           <Text style={styles.titleText}>Scam Defense{'\n'}Basics</Text>
-           <Text style={styles.subtitleText}>Intercept phishing attacks before they breach city infrastructure.</Text>
+        <ScrollView style={styles.mainContent} contentContainerStyle={styles.scrollContent}>
+           <Text style={styles.moduleText}>MODULE {currentModule.id}</Text>
+           <Text style={styles.titleText}>{currentModule.title}</Text>
+           <Text style={styles.subtitleText}>{currentModule.subtitle}</Text>
 
            <View style={styles.progressSection}>
               <View style={styles.progressBarContainer}>
-                 <View style={[styles.progressBarFill, { width: '65%' }]} />
+                 <View style={[styles.progressBarFill, { width: `${moduleProgress}%` }]} />
               </View>
-              <Text style={styles.xpText}>420/650 XP</Text>
+              <Text style={styles.xpText}>{completedLessons}/{totalLessons} Lessons</Text>
            </View>
 
            {/* === OBJECTIVES LIST === */}
            <View style={styles.objectivesSection}>
               <Text style={styles.objectivesTitle}>MISSION OBJECTIVES</Text>
-              <ObjectiveItem status="completed" text="Complete 5 matches" />
-              <ObjectiveItem status="completed" text="Score 70%+ accuracy once" />
-              <ObjectiveItem status="active" text="Reach a 5-match win streak" />
-              <ObjectiveItem status="pending" text="Hit 90%+ accuracy in a single match" />
+              {objectives.map((obj, index) => (
+                <ObjectiveItem key={index} status={obj.status} text={obj.text} />
+              ))}
            </View>
-        </View>
+        </ScrollView>
 
         {/* === BOTTOM PLAY BUTTON === */}
-        <TouchableOpacity style={styles.playButton} activeOpacity={0.9} onPress={() => navigation.navigate('Game')}>
+        <TouchableOpacity style={styles.playButton} activeOpacity={0.9} onPress={() => navigation.navigate('StageSelect')}>
            <View style={styles.playButtonContent}>
-              <Text style={styles.playButtonTitle}>Play Match</Text>
-              <Text style={styles.playButtonSub}>LAUNCH THIS MISSION</Text>
+              <Text style={styles.playButtonTitle}>Select Stage</Text>
+              <Text style={styles.playButtonSub}>CHOOSE YOUR MISSION</Text>
            </View>
            {/* Pure CSS triangle overlay to match the image detail */}
            <View style={styles.playButtonTriangle} />
@@ -144,24 +192,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: normalize(30),
-    paddingTop: normalize(20),
+    paddingHorizontal: normalize(20),
+    paddingTop: normalize(12),
   },
   topBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   consoleBtn: {
-    marginRight: normalize(16),
+    marginRight: normalize(12),
   },
   consoleBtnText: {
     color: '#bdc3c7',
-    fontSize: normalize(16),
+    fontSize: normalize(14),
     fontWeight: 'bold',
   },
   activeMissionText: {
     color: '#34495e',
-    fontSize: normalize(12),
+    fontSize: normalize(10),
     fontWeight: '800',
     letterSpacing: 2,
   },
@@ -212,27 +260,30 @@ const styles = StyleSheet.create({
   // MAIN CONTENT
   mainContent: {
     flex: 1,
-    paddingHorizontal: normalize(30),
-    marginTop: normalize(30),
+  },
+  scrollContent: {
+    paddingHorizontal: normalize(20),
+    paddingTop: normalize(16),
+    paddingBottom: normalize(16),
   },
   moduleText: {
     color: '#00d2d3', // Cyan
-    fontSize: normalize(12),
+    fontSize: normalize(9),
     fontWeight: '900',
     letterSpacing: 2,
-    marginBottom: normalize(8),
+    marginBottom: normalize(4),
   },
   titleText: {
     color: '#ffffff',
-    fontSize: normalize(40),
+    fontSize: normalize(20),
     fontWeight: '900',
-    lineHeight: normalize(42),
-    marginBottom: normalize(8),
+    lineHeight: normalize(24),
+    marginBottom: normalize(4),
   },
   subtitleText: {
     color: '#7f8c8d',
-    fontSize: normalize(14),
-    marginBottom: normalize(24),
+    fontSize: normalize(11),
+    marginBottom: normalize(12),
   },
 
   // PROGRESS
@@ -240,7 +291,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: normalize(40),
+    marginBottom: normalize(14),
   },
   progressBarContainer: {
     flex: 1,
@@ -264,18 +315,18 @@ const styles = StyleSheet.create({
   },
   objectivesTitle: {
     color: '#34495e',
-    fontSize: normalize(11),
+    fontSize: normalize(8),
     fontWeight: '900',
     letterSpacing: 2,
-    marginBottom: normalize(16),
+    marginBottom: normalize(8),
   },
   objectiveRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: normalize(12),
-    paddingVertical: normalize(10),
-    paddingHorizontal: normalize(12),
-    borderRadius: normalize(4),
+    marginBottom: normalize(6),
+    paddingVertical: normalize(4),
+    paddingHorizontal: normalize(8),
+    borderRadius: normalize(3),
   },
   objectiveRowActive: {
     backgroundColor: 'rgba(39, 174, 96, 0.15)',
@@ -283,14 +334,14 @@ const styles = StyleSheet.create({
     borderColor: '#27ae60',
   },
   checkbox: {
-    width: normalize(20),
-    height: normalize(20),
+    width: normalize(14),
+    height: normalize(14),
     borderWidth: bw(2),
     borderColor: '#34495e',
-    borderRadius: normalize(4),
+    borderRadius: normalize(2),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: normalize(12),
+    marginRight: normalize(8),
   },
   checkboxCompleted: {
     borderColor: '#2ecc71',
@@ -301,12 +352,12 @@ const styles = StyleSheet.create({
   },
   checkIcon: {
     color: '#2ecc71',
-    fontSize: normalize(14),
+    fontSize: normalize(10),
     fontWeight: '900',
   },
   arrowIcon: {
     color: '#0c161e',
-    fontSize: normalize(12),
+    fontSize: normalize(9),
     fontWeight: '900',
   },
   objectiveTextContainer: {
@@ -314,7 +365,7 @@ const styles = StyleSheet.create({
   },
   objectiveText: {
     color: '#81ecec', 
-    fontSize: normalize(14),
+    fontSize: normalize(11),
     fontWeight: '700',
   },
   objectiveTextCompleted: {
@@ -327,23 +378,23 @@ const styles = StyleSheet.create({
   },
   nextBadge: {
     backgroundColor: '#27ae60',
-    paddingHorizontal: normalize(8),
-    paddingVertical: normalize(4),
-    borderRadius: normalize(4),
+    paddingHorizontal: normalize(5),
+    paddingVertical: normalize(2),
+    borderRadius: normalize(2),
   },
   nextBadgeText: {
     color: '#ffffff',
-    fontSize: normalize(10),
+    fontSize: normalize(7),
     fontWeight: '900',
     letterSpacing: 1,
   },
 
   // PLAY BUTTON
   playButton: {
-    backgroundColor: '#48dbfb', 
+    backgroundColor: '#48dbfb',
     width: '100%',
-    paddingVertical: normalize(20),
-    paddingHorizontal: normalize(30),
+    paddingVertical: normalize(12),
+    paddingHorizontal: normalize(16),
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -354,28 +405,28 @@ const styles = StyleSheet.create({
   },
   playButtonTitle: {
     color: '#ffffff',
-    fontSize: normalize(36),
+    fontSize: normalize(20),
     fontWeight: '900',
-    marginBottom: normalize(4),
+    marginBottom: normalize(1),
   },
   playButtonSub: {
     color: '#0abde3', // Darker text for the sub label
-    fontSize: normalize(12),
+    fontSize: normalize(9),
     fontWeight: '900',
     letterSpacing: 2,
   },
   playButtonTriangle: {
     position: 'absolute',
-    right: normalize(-30),
-    top: normalize(-20),
+    right: normalize(-15),
+    top: normalize(-12),
     width: 0,
     height: 0,
     backgroundColor: 'transparent',
     borderStyle: 'solid',
-    borderTopWidth: normalize(80),
-    borderRightWidth: normalize(80),
-    borderBottomWidth: normalize(80),
-    borderLeftWidth: normalize(80),
+    borderTopWidth: normalize(50),
+    borderRightWidth: normalize(50),
+    borderBottomWidth: normalize(50),
+    borderLeftWidth: normalize(50),
     borderTopColor: 'transparent',
     borderRightColor: 'rgba(10, 189, 227, 0.4)', // faint triangle overlay
     borderBottomColor: 'transparent',

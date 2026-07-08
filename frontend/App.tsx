@@ -12,6 +12,7 @@ import IntroScreen from './src/screens/IntroScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MissionBriefingScreen from './src/screens/MissionBriefingScreen';
+import StageSelectScreen from './src/screens/StageSelectScreen';
 import GameScreen from './src/screens/GameScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import IntelligenceScreen from './src/screens/IntelligenceScreen';
@@ -22,8 +23,39 @@ import CodexScreen from './src/screens/CodexScreen';
 import PvPHubScreen from './src/screens/PvPHubScreen';
 import PayloadForgeScreen from './src/screens/PayloadForgeScreen';
 import InboxTriageScreen from './src/screens/InboxTriageScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import InboxScreen from './src/screens/InboxScreen';
+import { useProgressionStore } from './src/store/useProgressionStore';
 
+// Wrapper component for StageSelectScreen to work with navigation
+function StageSelectWrapper({ navigation }: any) {
+  const currentStage = useProgressionStore((s) => s.currentStage);
+  const highestUnlockedStage = useProgressionStore((s) => s.highestUnlockedStage);
+  const materials = useProgressionStore((s) => s.materials);
+  const buildingLevels = useProgressionStore((s) => s.buildingLevels);
+  const upgradeBuilding = useProgressionStore((s) => s.upgradeBuilding);
+  const setCurrentStage = useProgressionStore((s) => s.setCurrentStage);
 
+  return (
+    <StageSelectScreen
+      visible={true}
+      onClose={() => navigation.goBack()}
+      navigation={navigation}
+      currentStage={currentStage}
+      highestUnlockedStage={highestUnlockedStage}
+      materials={materials}
+      onSelectStage={(stage) => {
+        setCurrentStage(stage);
+        navigation.replace('Game', {
+          stage,
+          moduleName: 'Module 1: The Basics',
+        });
+      }}
+      buildingLevels={buildingLevels}
+      onUpgradeBuilding={upgradeBuilding}
+    />
+  );
+}
 
 const Stack = createNativeStackNavigator();
 
@@ -59,6 +91,9 @@ export default function App() {
           </Stack.Screen>
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="MissionBriefing" component={MissionBriefingScreen} />
+          <Stack.Screen name="StageSelect" component={StageSelectWrapper} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="Inbox" component={InboxScreen} />
           <Stack.Screen
             name="Game"
             component={GameScreen}

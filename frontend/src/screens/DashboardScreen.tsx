@@ -19,6 +19,7 @@ import { useRoute, useFocusEffect } from '@react-navigation/native';
 import StageSelectScreen from './StageSelectScreen';
 import { useProgressionStore } from '../store/useProgressionStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { MODULES } from './LessonsScreen';
 
 const BASE_WIDTH = 932; // The width the mockup was authored on
 
@@ -50,6 +51,7 @@ export default function DashboardScreen({ navigation }: any) {
 
   const [selectedMode, setSelectedMode] = useState<'SOLO' | 'PVP'>('SOLO');
   const [modeModalVisible, setModeModalVisible] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(2);
   const soloScale = useRef(new Animated.Value(1)).current;
   const pvpScale  = useRef(new Animated.Value(0.88)).current;
 
@@ -152,10 +154,15 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
 
               <View style={styles.actionButtonsRow}>
-                <TouchableOpacity style={styles.iconButton}>
+                <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Inbox')}>
                   <Text style={styles.iconButtonText}>✉️</Text>
+                  {unreadNotifications > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>{unreadNotifications}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.iconButton}>
+                <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
                   <Text style={styles.iconButtonText}>⚙️</Text>
                 </TouchableOpacity>
               </View>
@@ -200,8 +207,26 @@ export default function DashboardScreen({ navigation }: any) {
                 <Text style={styles.modeText}>{selectedMode}</Text>
               </TouchableOpacity>
 
-              {/* DEPLOY / DEFEND BUTTON — changes with selected mode */}
-              <TouchableOpacity
+              {/* VERTICAL STACK FOR PROGRESSION TRACKER AND DEPLOY BUTTON */}
+              <View style={styles.deployButtonStack}>
+                {/* MINI PROGRESSION TRACKER */}
+                {selectedMode === 'SOLO' && (
+                  <View style={styles.miniProgressTracker}>
+                    <View style={styles.miniProgressHeader}>
+                      <Text style={styles.miniProgressLabel}>CURRENT MISSION</Text>
+                      <Text style={styles.miniProgressModule}>MODULE {MODULES.find(m => m.unlocked)?.id || 1}</Text>
+                    </View>
+                    <View style={styles.miniProgressBar}>
+                      <View style={[styles.miniProgressFill, { width: `${MODULES.find(m => m.unlocked)?.progress || 0}%` }]} />
+                    </View>
+                    <Text style={styles.miniProgressText}>
+                      Stage {currentStage}/5 • {MODULES.find(m => m.unlocked)?.lessonsComplete || 0}/{MODULES.find(m => m.unlocked)?.totalLessons || 5} Lessons
+                    </Text>
+                  </View>
+                )}
+
+                {/* DEPLOY / DEFEND BUTTON — changes with selected mode */}
+                <TouchableOpacity
                 style={[
                   styles.deployButtonOuter,
                   selectedMode === 'PVP' && {
@@ -214,7 +239,7 @@ export default function DashboardScreen({ navigation }: any) {
                   if (selectedMode === 'PVP') {
                     navigation.navigate('PvPHub');
                   } else {
-                    setStageSelectVisible(true);
+                    navigation.navigate('MissionBriefing');
                   }
                 }}
               >
@@ -233,6 +258,7 @@ export default function DashboardScreen({ navigation }: any) {
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
+              </View>
             </View>
           </View>
         </SafeAreaView>
@@ -537,6 +563,26 @@ function makeStyles(width: number) {
       marginLeft: normalize(8),
     },
     iconButtonText: { fontSize: normalize(17) },
+    notificationBadge: {
+      position: 'absolute',
+      top: normalize(-4),
+      right: normalize(-4),
+      backgroundColor: '#ff6363',
+      borderRadius: normalize(10),
+      minWidth: normalize(20),
+      height: normalize(20),
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: normalize(4),
+      borderWidth: bw(2),
+      borderColor: '#060e18',
+    },
+    notificationBadgeText: {
+      color: '#ffffff',
+      fontSize: normalize(10),
+      fontFamily: 'PixelFont',
+      fontWeight: 'bold',
+    },
 
     // === BOTTOM SECTION ===
     bottomSection: {
@@ -784,6 +830,61 @@ function makeStyles(width: number) {
       fontFamily: 'PixelFont',
       fontSize: normalize(9),
       letterSpacing: 2,
+    },
+
+    // === MINI PROGRESSION TRACKER ===
+    deployButtonStack: {
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: normalize(12),
+    },
+    miniProgressTracker: {
+      backgroundColor: 'rgba(18, 36, 58, 0.9)',
+      borderWidth: bw(2),
+      borderColor: '#5a8aaa',
+      borderRadius: normalize(8),
+      paddingVertical: normalize(12),
+      paddingHorizontal: normalize(16),
+      minWidth: normalize(180),
+    },
+    miniProgressHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: normalize(8),
+    },
+    miniProgressLabel: {
+      color: '#7ab8d4',
+      fontSize: normalize(8),
+      fontFamily: 'PixelFont',
+      letterSpacing: 1,
+    },
+    miniProgressModule: {
+      color: '#ffd23f',
+      fontSize: normalize(10),
+      fontFamily: 'PixelFont',
+      fontWeight: 'bold',
+    },
+    miniProgressBar: {
+      height: normalize(6),
+      backgroundColor: '#0a1520',
+      borderRadius: normalize(3),
+      overflow: 'hidden',
+      marginBottom: normalize(6),
+    },
+    miniProgressFill: {
+      height: '100%',
+      backgroundColor: '#00ffff',
+      shadowColor: '#00ffff',
+      shadowOpacity: 0.8,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    miniProgressText: {
+      color: '#5a8aaa',
+      fontSize: normalize(9),
+      fontFamily: 'PixelFont',
+      textAlign: 'center',
     },
   });
 }
