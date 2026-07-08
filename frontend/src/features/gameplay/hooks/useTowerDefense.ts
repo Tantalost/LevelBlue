@@ -40,7 +40,7 @@ export function useTowerDefense({
   const [currentWave, setCurrentWave] = useState(0);
   const [waveSpawned, setWaveSpawned] = useState(0);
   const [message, setMessage] = useState(
-    `Fixed deployment budget: ${startingGold}g — spend it wisely.`,
+    `Budget: ${startingGold}g — spend it wisely.`,
   );
   const [selectedTowerType, setSelectedTowerType] = useState<TowerType | null>(null);
   const [draggingTower, setDraggingTower] = useState<{ type: TowerType; x: number; y: number } | null>(null);
